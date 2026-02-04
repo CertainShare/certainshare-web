@@ -3,22 +3,17 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Home() {
+export default function LogoutPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      router.push("/login");
-    } else {
-      router.push("/mymedia");
-    }
+    localStorage.removeItem("token");
+    router.push("/login");
   }, [router]);
 
   return (
     <main style={{ padding: 30 }}>
-      <p>Loading...</p>
+      <p>Logging out...</p>
     </main>
   );
 }
