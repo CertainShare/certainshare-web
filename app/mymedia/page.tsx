@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
+import TopNav from "../components/TopNav";
 
 type Album = {
   id: string;
@@ -14,17 +15,24 @@ type Album = {
 type Upload = {
   id: string;
   url: string;
-  visibility: "private" | "shared";
+  visibility: "private" | "shared" | "public" | "custom";
 };
 
 export default function MyMediaPage() {
   const [view, setView] = useState<"albums" | "uploads">("albums");
+  const [me, setMe] = useState<any>(null);
   const [albums, setAlbums] = useState<Album[]>([]);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [isPaid, setIsPaid] = useState(false);
+  const [storage, setStorage] = useState<any>(null);
+
+  async function loadMe() {
+    const res = await apiFetch("/users/me");
+    setMe(res);
+  }
 
   async function loadBillingStatus() {
     try {
@@ -33,6 +41,11 @@ export default function MyMediaPage() {
     } catch {
       setIsPaid(false);
     }
+  }
+
+  async function loadStorageFullness() {
+    const res = await apiFetch("/storage/fullness");
+    setStorage(res);
   }
 
   async function loadAlbums() {
@@ -50,7 +63,9 @@ export default function MyMediaPage() {
     setError("");
 
     try {
+      await loadMe();
       await loadBillingStatus();
+      await loadStorageFullness();
       await loadAlbums();
       await loadUploads();
     } catch (err: any) {
@@ -94,6 +109,15 @@ export default function MyMediaPage() {
     }
   }
 
+  // remember which tab user was on
+  useEffect(() => {
+    const saved = localStorage.getItem("mymedia_view");
+    if (saved === "albums" || saved === "uploads") {
+      setView(saved);
+    }
+  }, []);
+
+  // auth guard + initial load
   useEffect(() => {
     const token = localStorage.getItem("token");
 
@@ -105,229 +129,602 @@ export default function MyMediaPage() {
     refreshAll();
   }, []);
 
+  const usagePercent = storage
+    ? Math.min(storage.percent_full * 100, 100)
+    : 0;
+
+  const usedGB = storage ? storage.used_bytes / 1024 / 1024 / 1024 : 0;
+  const totalGB = storage ? storage.max_bytes / 1024 / 1024 / 1024 : 1;
+
+  const barColor =
+    usagePercent >= 90 ? "#dc2626" : usagePercent >= 70 ? "#f97316" : "#2563eb";
+
   return (
-    <main style={{ padding: 30 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h1 style={{ fontSize: 28, fontWeight: "bold" }}>My Media</h1>
+    <main style={styles.page}>
+      <TopNav />
 
-        <div style={{ display: "flex", gap: 12 }}>
-          <Link href="/">Home</Link>
-          <Link href="/logout">Logout</Link>
-        </div>
-      </div>
+      <div style={styles.container}>
+        {/* PROFILE HEADER */}
+        <div style={styles.profileCard}>
+          {/* Banner */}
+          <div style={styles.banner} />
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 16,
-          border: "1px solid #ddd",
-          borderRadius: 12,
-        }}
-      >
-        <h2 style={{ fontSize: 18, fontWeight: "bold" }}>
-          Your Private Library
-        </h2>
-        <p style={{ marginTop: 6, color: "#555" }}>
-          Organize photos into albums, or keep individual media in uploads.
-        </p>
+          {/* Profile Row */}
+          <div style={styles.profileRow}>
+            <div style={styles.profileLeft}>
+              <img
+                src={
+                  me?.profile_photo_url ||
+                  "https://www.gravatar.com/avatar/?d=mp&s=200"
+                }
+                alt="Profile"
+                style={styles.profileImage}
+              />
 
-        <div style={{ marginTop: 14, display: "flex", gap: 10 }}>
-          <button
-            onClick={() => setView("albums")}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 999,
-              border: "1px solid #ccc",
-              background: view === "albums" ? "#e8f0ff" : "white",
-              cursor: "pointer",
-            }}
-          >
-            Albums
-          </button>
+              <div style={styles.profileText}>
+                <div style={styles.profileName}>
+                  {me?.display_name || "Your Profile"}
+                </div>
 
-          <button
-            onClick={() => setView("uploads")}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 999,
-              border: "1px solid #ccc",
-              background: view === "uploads" ? "#e8f0ff" : "white",
-              cursor: "pointer",
-            }}
-          >
-            Uploads
-          </button>
+                <div style={styles.profileBio}>
+                  {me?.bio || "No bio yet."}
+                </div>
 
-          {isPaid && (
-            <Link style={{ marginLeft: "auto" }} href="/trash">
-              Trash
-            </Link>
+                <div style={styles.planText}>
+                  Plan: <b>{isPaid ? "Paid" : "Free"}</b>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.profileActions}>
+              <Link href="/settings" style={styles.primaryButton}>
+                Settings
+              </Link>
+
+              <Link href="/logout" style={styles.darkButton}>
+                Logout
+              </Link>
+            </div>
+          </div>
+
+          {/* Storage */}
+          {storage && (
+            <div style={styles.storageBlock}>
+              <div style={styles.storageHeader}>
+                <span style={{ fontWeight: "bold" }}>Storage</span>
+                <span>
+                  {usedGB.toFixed(2)} GB / {totalGB.toFixed(2)} GB
+                </span>
+              </div>
+
+              <div style={styles.storageBarOuter}>
+                <div
+                  style={{
+                    ...styles.storageBarInner,
+                    width: `${usagePercent}%`,
+                    background: barColor,
+                  }}
+                />
+              </div>
+
+              <div style={styles.storagePercentText}>
+                {Math.round(storage.percent_full * 100)}% used
+              </div>
+            </div>
           )}
         </div>
-      </div>
 
-      {loading && <p style={{ marginTop: 20 }}>Loading...</p>}
-      {error && <p style={{ marginTop: 20, color: "red" }}>{error}</p>}
-
-      {!loading && !error && view === "albums" && (
-        <div style={{ marginTop: 20 }}>
-          <h3 style={{ fontSize: 18, fontWeight: "bold" }}>Albums</h3>
-
-          {albums.length === 0 ? (
-            <p style={{ marginTop: 20, color: "#666" }}>No albums yet</p>
-          ) : (
-            <div
+        {/* TAB + ACTIONS */}
+        <div style={styles.tabRow}>
+          <div style={styles.tabSwitcher}>
+            <button
+              onClick={() => {
+                setView("albums");
+                localStorage.setItem("mymedia_view", "albums");
+              }}
               style={{
-                marginTop: 14,
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                gap: 14,
+                ...styles.tabButton,
+                ...(view === "albums" ? styles.tabButtonActive : {}),
               }}
             >
-              {albums.map((album) => (
-                <div
-                  key={album.id}
-                  style={{
-                    border: "1px solid #ddd",
-                    borderRadius: 12,
-                    overflow: "hidden",
-                    background: "white",
-                  }}
-                >
-                  <Link
-                    href={`/album/${album.id}`}
-                    style={{
-                      textDecoration: "none",
-                      color: "inherit",
-                      display: "block",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "100%",
-                        aspectRatio: "1 / 1",
-                        background: "#eee",
-                      }}
-                    >
-                      {album.hero_uri && (
-                        <img
-                          src={album.hero_uri}
-                          alt={album.name}
-                          style={{ width: "100%", height: "100%" }}
-                        />
-                      )}
-                    </div>
+              Albums
+            </button>
 
-                    <div style={{ padding: 12 }}>
-                      <div style={{ fontWeight: "bold" }}>{album.name}</div>
-                      <div style={{ fontSize: 13, color: "#666" }}>
-                        {album.media?.length || 0} items
+            <button
+              onClick={() => {
+                setView("uploads");
+                localStorage.setItem("mymedia_view", "uploads");
+              }}
+              style={{
+                ...styles.tabButton,
+                ...(view === "uploads" ? styles.tabButtonActive : {}),
+              }}
+            >
+              Uploads
+            </button>
+          </div>
+
+          <div style={styles.tabActions}>
+            {view === "albums" && (
+              <Link href="/new-album" style={styles.actionButton}>
+                + New Album
+              </Link>
+            )}
+
+            {isPaid && (
+              <Link href="/trash" style={styles.trashButton}>
+                Trash
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* LOADING */}
+        {loading && <div style={styles.centerText}>Loading...</div>}
+
+        {/* ERROR */}
+        {error && <div style={styles.errorBox}>{error}</div>}
+
+        {/* ALBUMS VIEW */}
+        {!loading && !error && view === "albums" && (
+          <div style={{ marginTop: 20 }}>
+            {albums.length === 0 ? (
+              <div style={styles.emptyState}>
+                <div style={styles.emptyTitle}>No albums yet</div>
+                <div style={styles.emptySub}>
+                  Create your first album to organize your memories.
+                </div>
+              </div>
+            ) : (
+              <div style={styles.gridAlbums}>
+                {albums.map((album) => (
+                  <div key={album.id} style={styles.albumCard}>
+                    <Link href={`/album/${album.id}`} style={styles.albumLink}>
+                      <div style={styles.albumImageBox}>
+                        {album.hero_uri ? (
+                          <img
+                            src={album.hero_uri}
+                            alt={album.name}
+                            style={styles.albumImage}
+                          />
+                        ) : (
+                          <div style={styles.albumPlaceholder}>📁</div>
+                        )}
                       </div>
-                    </div>
-                  </Link>
 
-                  <div style={{ padding: 12, paddingTop: 0 }}>
+                      <div style={styles.albumInfo}>
+                        <div style={styles.albumName}>{album.name}</div>
+                        <div style={styles.albumCount}>
+                          {album.media?.length || 0} items
+                        </div>
+                      </div>
+                    </Link>
+
+                    <div style={styles.albumFooter}>
+                      <button
+                        onClick={() => deleteAlbum(album.id)}
+                        style={styles.deleteButton}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* UPLOADS VIEW */}
+        {!loading && !error && view === "uploads" && (
+          <div style={{ marginTop: 20 }}>
+            {uploads.length === 0 ? (
+              <div style={styles.emptyState}>
+                <div style={styles.emptyTitle}>No uploads yet</div>
+                <div style={styles.emptySub}>
+                  Upload your first photo or video to start building your
+                  library.
+                </div>
+              </div>
+            ) : (
+              <div style={styles.gridUploads}>
+                {uploads.map((upload) => (
+                  <div key={upload.id} style={styles.uploadCard}>
+                    <Link href={`/media/${upload.id}`}>
+                      <img
+                        src={upload.url}
+                        alt="upload"
+                        style={styles.uploadImage}
+                      />
+                    </Link>
+
+                    <div style={styles.visibilityBadge}>
+                      {upload.visibility}
+                    </div>
+
                     <button
-                      onClick={() => deleteAlbum(album.id)}
-                      style={{
-                        padding: 8,
-                        width: "100%",
-                        cursor: "pointer",
-                      }}
+                      onClick={() => deleteUpload(upload.id)}
+                      style={styles.uploadDeleteButton}
                     >
                       Delete
                     </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
-      {!loading && !error && view === "uploads" && (
-        <div style={{ marginTop: 20 }}>
-          <h3 style={{ fontSize: 18, fontWeight: "bold" }}>Uploads</h3>
-
-          {uploads.length === 0 ? (
-            <p style={{ marginTop: 20, color: "#666" }}>No uploads yet</p>
-          ) : (
-            <div
-              style={{
-                marginTop: 14,
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-                gap: 10,
-              }}
-            >
-              {uploads.map((upload) => (
-                <div
-                  key={upload.id}
-                  style={{
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    border: "1px solid #ddd",
-                    background: "#eee",
-                    position: "relative",
-                  }}
-                >
-                  <Link href={`/media/${upload.id}`}>
-  <img
-    src={upload.url}
-    alt="upload"
-    style={{ width: "100%", height: 120, objectFit: "cover" }}
-  />
-</Link>
-
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 8,
-                      right: 8,
-                      background: "rgba(255,255,255,0.9)",
-                      padding: "4px 8px",
-                      borderRadius: 999,
-                      fontSize: 12,
-                    }}
-                  >
-                    {upload.visibility}
-                  </div>
-
-                  <button
-                    onClick={() => deleteUpload(upload.id)}
-                    style={{
-                      width: "100%",
-                      padding: 8,
-                      cursor: "pointer",
-                      border: "none",
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <Link
-        href="/upload"
-        style={{
-          position: "fixed",
-          bottom: 30,
-          right: 30,
-          background: "#2563eb",
-          color: "white",
-          padding: "14px 18px",
-          borderRadius: 999,
-          fontWeight: "bold",
-          textDecoration: "none",
-          boxShadow: "0px 6px 20px rgba(0,0,0,0.25)",
-        }}
-      >
+      {/* FLOATING UPLOAD BUTTON */}
+      <Link href="/upload" style={styles.floatingUpload}>
         + Upload
       </Link>
     </main>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    padding: 0,
+    background: "#f6f7fb",
+    minHeight: "100vh",
+  },
+
+  container: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: 30,
+  },
+
+  profileCard: {
+    borderRadius: 20,
+    background: "white",
+    border: "1px solid #e5e7eb",
+    overflow: "hidden",
+    boxShadow: "0px 10px 30px rgba(0,0,0,0.06)",
+  },
+
+  banner: {
+    height: 140,
+    background:
+      "linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #9333ea 100%)",
+  },
+
+  profileRow: {
+    padding: 18,
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 20,
+    flexWrap: "wrap",
+  },
+
+  profileLeft: {
+    display: "flex",
+    gap: 16,
+    alignItems: "center",
+  },
+
+  profileImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 999,
+    objectFit: "cover",
+    border: "4px solid white",
+    marginTop: -55,
+    boxShadow: "0px 8px 20px rgba(0,0,0,0.2)",
+    background: "#eee",
+  },
+
+  profileText: {
+    marginTop: -10,
+  },
+
+  profileName: {
+    fontSize: 22,
+    fontWeight: "bold",
+  },
+
+  profileBio: {
+    marginTop: 6,
+    fontSize: 14,
+    color: "#555",
+    maxWidth: 500,
+    lineHeight: "18px",
+  },
+
+  planText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "#777",
+  },
+
+  profileActions: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+  },
+
+  primaryButton: {
+    textDecoration: "none",
+    background: "#2563eb",
+    color: "white",
+    padding: "10px 14px",
+    borderRadius: 12,
+    fontWeight: "bold",
+    fontSize: 13,
+    boxShadow: "0px 8px 20px rgba(37,99,235,0.25)",
+  },
+
+  darkButton: {
+    textDecoration: "none",
+    background: "#111827",
+    color: "white",
+    padding: "10px 14px",
+    borderRadius: 12,
+    fontWeight: "bold",
+    fontSize: 13,
+  },
+
+  storageBlock: {
+    padding: "0px 18px 18px 18px",
+  },
+
+  storageHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: 13,
+    color: "#555",
+    marginBottom: 8,
+  },
+
+  storageBarOuter: {
+    height: 10,
+    borderRadius: 999,
+    background: "#e5e7eb",
+    overflow: "hidden",
+  },
+
+  storageBarInner: {
+    height: "100%",
+
+    transition: "width 0.2s ease",
+  },
+
+  storagePercentText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: "#777",
+  },
+
+  tabRow: {
+    marginTop: 20,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+
+  tabSwitcher: {
+    display: "flex",
+    gap: 10,
+    padding: 6,
+    borderRadius: 999,
+    background: "white",
+    border: "1px solid #e5e7eb",
+    boxShadow: "0px 8px 20px rgba(0,0,0,0.04)",
+  },
+
+  tabButton: {
+    padding: "10px 16px",
+    borderRadius: 999,
+    border: "none",
+    cursor: "pointer",
+    fontWeight: "bold",
+    fontSize: 13,
+    background: "transparent",
+    color: "#111827",
+  },
+
+  tabButtonActive: {
+    background: "#2563eb",
+    color: "white",
+  },
+
+  tabActions: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+  },
+
+  actionButton: {
+    textDecoration: "none",
+    background: "white",
+    border: "1px solid #e5e7eb",
+    padding: "10px 14px",
+    borderRadius: 12,
+    fontWeight: "bold",
+    fontSize: 13,
+    color: "#111827",
+    boxShadow: "0px 8px 20px rgba(0,0,0,0.04)",
+  },
+
+  trashButton: {
+    textDecoration: "none",
+    background: "white",
+    border: "1px solid #e5e7eb",
+    padding: "10px 14px",
+    borderRadius: 12,
+    fontWeight: "bold",
+    fontSize: 13,
+    color: "#dc2626",
+    boxShadow: "0px 8px 20px rgba(0,0,0,0.04)",
+  },
+
+  centerText: {
+    marginTop: 30,
+    textAlign: "center",
+    color: "#555",
+  },
+
+  errorBox: {
+    marginTop: 30,
+    padding: 14,
+    borderRadius: 14,
+    background: "#fee2e2",
+    border: "1px solid #fecaca",
+    color: "#991b1b",
+    fontWeight: "bold",
+  },
+
+  emptyState: {
+    marginTop: 30,
+    padding: 24,
+    borderRadius: 18,
+    border: "1px solid #e5e7eb",
+    background: "white",
+    textAlign: "center",
+    color: "#666",
+  },
+
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111",
+  },
+
+  emptySub: {
+    marginTop: 8,
+  },
+
+  gridAlbums: {
+    marginTop: 16,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+    gap: 16,
+  },
+
+  albumCard: {
+    borderRadius: 18,
+    overflow: "hidden",
+    background: "white",
+    border: "1px solid #e5e7eb",
+    boxShadow: "0px 12px 30px rgba(0,0,0,0.06)",
+  },
+
+  albumLink: {
+    textDecoration: "none",
+    color: "inherit",
+    display: "block",
+  },
+
+  albumImageBox: {
+    width: "100%",
+    aspectRatio: "1 / 1",
+    background: "#f3f4f6",
+  },
+
+  albumImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  },
+
+  albumPlaceholder: {
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 40,
+    color: "#bbb",
+  },
+
+  albumInfo: {
+    padding: 14,
+  },
+
+  albumName: {
+    fontWeight: "bold",
+    fontSize: 15,
+  },
+
+  albumCount: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 4,
+  },
+
+  albumFooter: {
+    padding: 14,
+    paddingTop: 0,
+  },
+
+  deleteButton: {
+    width: "100%",
+    padding: 10,
+    borderRadius: 12,
+    cursor: "pointer",
+    border: "1px solid #eee",
+    background: "#fafafa",
+    fontWeight: "bold",
+  },
+
+  gridUploads: {
+    marginTop: 16,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+    gap: 14,
+  },
+
+  uploadCard: {
+    borderRadius: 16,
+    overflow: "hidden",
+    border: "1px solid #e5e7eb",
+    background: "white",
+    boxShadow: "0px 12px 30px rgba(0,0,0,0.06)",
+    position: "relative",
+  },
+
+  uploadImage: {
+    width: "100%",
+    height: 140,
+    objectFit: "cover",
+    display: "block",
+  },
+
+  visibilityBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    background: "rgba(17,24,39,0.75)",
+    color: "white",
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+
+  uploadDeleteButton: {
+    width: "100%",
+    padding: 10,
+    cursor: "pointer",
+    border: "none",
+    background: "white",
+    fontWeight: "bold",
+  },
+
+  floatingUpload: {
+    position: "fixed",
+    bottom: 30,
+    right: 30,
+    background: "#2563eb",
+    color: "white",
+    padding: "14px 18px",
+    borderRadius: 999,
+    fontWeight: "bold",
+    textDecoration: "none",
+    boxShadow: "0px 10px 25px rgba(37,99,235,0.35)",
+  },
+};

@@ -84,21 +84,23 @@ export default function AlbumPage({
           }}
         >
           {items.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 12,
-                overflow: "hidden",
-              }}
-            >
-              <img
-                src={item.url}
-                alt="media"
-                style={{ width: "100%", height: 140, objectFit: "cover" }}
-              />
-            </div>
-          ))}
+  <Link
+    key={item.id}
+    href={`/media/${item.id}`}
+    style={{
+      border: "1px solid #ddd",
+      borderRadius: 12,
+      overflow: "hidden",
+      display: "block",
+    }}
+  >
+    <img
+      src={item.url}
+      alt="media"
+      style={{ width: "100%", height: 140, objectFit: "cover" }}
+    />
+  </Link>
+))}
         </div>
       )}
     </main>
