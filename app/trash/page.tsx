@@ -61,73 +61,274 @@ export default function TrashPage() {
   }, []);
 
   return (
-    <main style={{ padding: 30 }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h1 style={{ fontSize: 26, fontWeight: "bold" }}>Trash</h1>
-
-        <div style={{ display: "flex", gap: 12 }}>
-          <Link href="/mymedia">Back</Link>
-          <Link href="/logout">Logout</Link>
-        </div>
-      </div>
-
-      {loading && <p style={{ marginTop: 20 }}>Loading...</p>}
-      {error && <p style={{ marginTop: 20, color: "red" }}>{error}</p>}
-
-      {!loading && !error && items.length === 0 && (
-        <p style={{ marginTop: 20, color: "#666" }}>Trash is empty</p>
-      )}
-
-      {!loading && !error && items.length > 0 && (
-        <div
-          style={{
-            marginTop: 20,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-            gap: 14,
-          }}
-        >
-          {items.map((item) => (
-            <div
-              key={item.id}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 12,
-                overflow: "hidden",
-                background: "#fff",
-              }}
-            >
-              <img
-                src={item.url}
-                alt="trash"
-                style={{ width: "100%", height: 160, objectFit: "cover" }}
-              />
-
-              <div style={{ padding: 10 }}>
-                <button
-                  onClick={() => restoreItem(item.id)}
-                  style={{ width: "100%", padding: 8, cursor: "pointer" }}
-                >
-                  Restore
-                </button>
-
-                <button
-                  onClick={() => deletePermanent(item.id)}
-                  style={{
-                    width: "100%",
-                    padding: 8,
-                    cursor: "pointer",
-                    marginTop: 8,
-                    color: "red",
-                  }}
-                >
-                  Delete Forever
-                </button>
-              </div>
+    <main style={styles.page}>
+      <div style={styles.container}>
+        <div style={styles.headerRow}>
+          <div>
+            <h1 style={styles.title}>Trash</h1>
+            <div style={styles.subtitle}>
+              Items in Trash will stay here until permanently deleted.
             </div>
-          ))}
+          </div>
+
+          <div style={styles.headerActions}>
+            <Link href="/mymedia" style={styles.backButton}>
+              ← Back
+            </Link>
+
+            <Link href="/logout" style={styles.logoutButton}>
+              Logout
+            </Link>
+          </div>
         </div>
-      )}
+
+        {loading && <div style={styles.centerText}>Loading...</div>}
+        {error && <div style={styles.errorBox}>{error}</div>}
+
+        {!loading && !error && items.length === 0 && (
+          <div style={styles.emptyState}>
+            <div style={styles.emptyTitle}>Trash is empty</div>
+            <div style={styles.emptySub}>
+              Deleted photos and videos will show up here until removed forever.
+            </div>
+
+            <Link href="/mymedia" style={styles.primaryLink}>
+              Back to My Media
+            </Link>
+          </div>
+        )}
+
+        {!loading && !error && items.length > 0 && (
+          <div style={styles.grid}>
+            {items.map((item) => (
+              <div key={item.id} style={styles.card}>
+                <div style={styles.imageBox}>
+                  <img src={item.url} alt="trash" style={styles.image} />
+
+                  <div style={styles.deletedBadge}>
+                    Deleted{" "}
+                    {item.deleted_at
+                      ? new Date(item.deleted_at).toLocaleDateString()
+                      : ""}
+                  </div>
+                </div>
+
+                <div style={styles.cardActions}>
+                  <button
+                    onClick={() => restoreItem(item.id)}
+                    style={styles.restoreButton}
+                  >
+                    Restore
+                  </button>
+
+                  <button
+                    onClick={() => deletePermanent(item.id)}
+                    style={styles.deleteButton}
+                  >
+                    Delete forever
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+  page: {
+    background: "var(--bg)",
+    minHeight: "100vh",
+  },
+
+  container: {
+    maxWidth: 1100,
+    margin: "0 auto",
+    padding: 24,
+  },
+
+  headerRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    flexWrap: "wrap",
+    gap: 14,
+    marginBottom: 18,
+  },
+
+  title: {
+    fontSize: 28,
+    fontWeight: 950,
+    letterSpacing: "-0.6px",
+    margin: 0,
+    color: "var(--text)",
+  },
+
+  subtitle: {
+    marginTop: 6,
+    fontSize: 13,
+    color: "var(--muted)",
+    fontWeight: 700,
+    maxWidth: 650,
+    lineHeight: "18px",
+  },
+
+  headerActions: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+  },
+
+  backButton: {
+    textDecoration: "none",
+    fontWeight: 950,
+    fontSize: 13,
+    color: "var(--text)",
+    background: "white",
+    border: "1px solid rgba(15,23,42,0.10)",
+    padding: "10px 14px",
+    borderRadius: 12,
+    boxShadow: "var(--shadow-sm)",
+  },
+
+  logoutButton: {
+    textDecoration: "none",
+    fontWeight: 950,
+    fontSize: 13,
+    color: "#dc2626",
+    background: "white",
+    border: "1px solid rgba(220,38,38,0.18)",
+    padding: "10px 14px",
+    borderRadius: 12,
+    boxShadow: "var(--shadow-sm)",
+  },
+
+  centerText: {
+    marginTop: 30,
+    textAlign: "center",
+    fontWeight: 800,
+    color: "var(--muted)",
+  },
+
+  errorBox: {
+    marginTop: 18,
+    padding: 14,
+    borderRadius: 16,
+    background: "rgba(220,38,38,0.08)",
+    border: "1px solid rgba(220,38,38,0.18)",
+    color: "#991b1b",
+    fontWeight: 900,
+    fontSize: 13,
+  },
+
+  emptyState: {
+    marginTop: 30,
+    padding: 24,
+    borderRadius: 20,
+    background: "white",
+    border: "1px solid var(--border)",
+    boxShadow: "var(--shadow-md)",
+    textAlign: "center",
+  },
+
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 950,
+    color: "var(--text)",
+  },
+
+  emptySub: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--muted)",
+    lineHeight: "18px",
+  },
+
+  primaryLink: {
+    display: "inline-block",
+    marginTop: 16,
+    textDecoration: "none",
+    fontWeight: 950,
+    fontSize: 13,
+    color: "white",
+    background: "var(--primary)",
+    padding: "10px 14px",
+    borderRadius: 14,
+    boxShadow: "0px 14px 28px rgba(37,99,235,0.22)",
+  },
+
+  grid: {
+    marginTop: 18,
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))",
+    gap: 16,
+  },
+
+  card: {
+    borderRadius: 18,
+    overflow: "hidden",
+    background: "white",
+    border: "1px solid var(--border)",
+    boxShadow: "var(--shadow-md)",
+  },
+
+  imageBox: {
+    position: "relative",
+    width: "100%",
+    aspectRatio: "1 / 1",
+    background: "#f3f4f6",
+  },
+
+  image: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  },
+
+  deletedBadge: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "rgba(15,23,42,0.70)",
+    color: "white",
+    fontWeight: 900,
+    fontSize: 11,
+    backdropFilter: "blur(8px)",
+  },
+
+  cardActions: {
+    padding: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+
+  restoreButton: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 14,
+    cursor: "pointer",
+    border: "1px solid rgba(37,99,235,0.25)",
+    background: "rgba(37,99,235,0.08)",
+    color: "#1d4ed8",
+    fontWeight: 950,
+    fontSize: 13,
+  },
+
+  deleteButton: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 14,
+    cursor: "pointer",
+    border: "1px solid rgba(220,38,38,0.25)",
+    background: "rgba(220,38,38,0.08)",
+    color: "#dc2626",
+    fontWeight: 950,
+    fontSize: 13,
+  },
+};

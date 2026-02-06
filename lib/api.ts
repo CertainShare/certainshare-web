@@ -36,9 +36,16 @@ export async function apiFetch(
   }
 
   if (!res.ok) {
-    const message = data?.error || data?.message || "Request failed";
-    throw new Error(message);
+    // If token is invalid/expired/revoked, force logout
+    if (res.status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+      return;
   }
+
+  const message = data?.error || data?.message || "Request failed";
+  throw new Error(message);
+}
 
   return data;
 }

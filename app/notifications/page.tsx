@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
-import TopNav from "../../components/TopNav";
+import TopNav from "../components/TopNav";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -63,9 +63,14 @@ export default function NotificationsPage() {
 
       <div style={styles.container}>
         <div style={styles.headerRow}>
-          <h1 style={styles.title}>Notifications</h1>
+          <div>
+            <h1 style={styles.title}>Notifications</h1>
+            <div style={styles.subtitle}>
+              Friend requests, shares, and activity updates.
+            </div>
+          </div>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={styles.headerActions}>
             <span style={styles.unreadBadge}>{unreadCount} unread</span>
 
             <button onClick={markAllRead} style={styles.button}>
@@ -74,8 +79,8 @@ export default function NotificationsPage() {
           </div>
         </div>
 
-        {loading && <p>Loading...</p>}
-        {error && <p style={{ color: "red" }}>{error}</p>}
+        {loading && <p style={styles.statusText}>Loading...</p>}
+        {error && <p style={styles.errorText}>{error}</p>}
 
         {!loading && !error && notifications.length === 0 && (
           <div style={styles.emptyState}>
@@ -87,7 +92,7 @@ export default function NotificationsPage() {
         )}
 
         {!loading && !error && notifications.length > 0 && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 18 }}>
             {notifications.map((n) => (
               <div
                 key={n.id}
@@ -96,16 +101,31 @@ export default function NotificationsPage() {
                   ...(n.read_at ? {} : styles.unreadCard),
                 }}
               >
-                <div style={{ fontWeight: "bold" }}>
-                  {n.actor_display_name || "Someone"}
+                <div style={styles.cardHeader}>
+                  <div style={styles.userRow}>
+                    <div style={styles.avatarCircle}>
+                      {(n.actor_display_name || "S")
+                        .slice(0, 1)
+                        .toUpperCase()}
+                    </div>
+
+                    <div>
+                      <div style={styles.username}>
+                        {n.actor_display_name || "Someone"}
+                      </div>
+                      <div style={styles.timestamp}>
+                        {new Date(n.created_at).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {!n.read_at && <span style={styles.newBadge}>New</span>}
                 </div>
 
-                <div style={{ marginTop: 6 }}>{n.message}</div>
+                <div style={styles.message}>{n.message}</div>
 
                 <div style={styles.metaRow}>
-                  <div style={styles.timestamp}>
-                    {new Date(n.created_at).toLocaleString()}
-                  </div>
+                  <div />
 
                   {!n.read_at && (
                     <button
@@ -127,99 +147,192 @@ export default function NotificationsPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    background: "#f6f7fb",
+    background: "var(--bg)",
     minHeight: "100vh",
   },
 
   container: {
     maxWidth: 900,
     margin: "0 auto",
-    padding: 30,
+    padding: 24,
   },
 
   headerRow: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     flexWrap: "wrap",
-    gap: 12,
+    gap: 14,
+    paddingTop: 6,
+    paddingBottom: 18,
   },
 
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: 750,
+    letterSpacing: "-0.6px",
+    margin: 0,
+    color: "var(--text)",
+  },
+
+  subtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    color: "var(--muted)",
+  },
+
+  headerActions: {
+    display: "flex",
+    gap: 10,
+    alignItems: "center",
+    flexWrap: "wrap",
   },
 
   unreadBadge: {
-    background: "#111827",
-    color: "white",
+    background: "rgba(15,23,42,0.06)",
+    color: "#0f172a",
     padding: "6px 12px",
     borderRadius: 999,
-    fontWeight: "bold",
+    fontWeight: 800,
     fontSize: 12,
+    border: "1px solid rgba(15,23,42,0.10)",
   },
 
   button: {
     padding: "10px 14px",
-    borderRadius: 10,
+    borderRadius: 12,
     cursor: "pointer",
-    border: "1px solid #ddd",
+    border: "1px solid rgba(15,23,42,0.10)",
     background: "white",
-    fontWeight: "bold",
+    fontWeight: 800,
+    fontSize: 13,
+    boxShadow: "var(--shadow-sm)",
+  },
+
+  statusText: {
+    marginTop: 16,
+    color: "var(--muted)",
+  },
+
+  errorText: {
+    marginTop: 16,
+    color: "#dc2626",
+    fontWeight: 600,
   },
 
   card: {
-    borderRadius: 16,
+    borderRadius: 18,
     background: "white",
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     padding: 14,
     marginBottom: 12,
-    boxShadow: "0px 10px 25px rgba(0,0,0,0.05)",
+    boxShadow: "var(--shadow-md)",
   },
 
   unreadCard: {
-    border: "2px solid #2563eb",
+    border: "1px solid rgba(37,99,235,0.35)",
+    background: "rgba(37,99,235,0.04)",
+  },
+
+  cardHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+
+  userRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    background: "rgba(37,99,235,0.12)",
+    border: "1px solid rgba(37,99,235,0.25)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 800,
+    color: "#2563eb",
+    fontSize: 14,
+    flexShrink: 0,
+  },
+
+  username: {
+    fontWeight: 800,
+    fontSize: 14,
+    color: "var(--text)",
+  },
+
+  timestamp: {
+    marginTop: 3,
+    fontSize: 12,
+    color: "var(--muted2)",
+  },
+
+  newBadge: {
+    fontSize: 12,
+    fontWeight: 900,
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(37,99,235,0.25)",
+    background: "rgba(37,99,235,0.10)",
+    color: "#2563eb",
+    whiteSpace: "nowrap",
+  },
+
+  message: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "var(--text)",
+    lineHeight: 1.5,
   },
 
   metaRow: {
-    marginTop: 10,
+    marginTop: 12,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
   },
 
-  timestamp: {
-    fontSize: 12,
-    color: "#666",
-  },
-
   smallButton: {
-    padding: "6px 10px",
-    borderRadius: 10,
+    padding: "8px 12px",
+    borderRadius: 12,
     cursor: "pointer",
-    border: "1px solid #ddd",
-    background: "white",
-    fontWeight: "bold",
-    fontSize: 12,
+    border: "1px solid rgba(37,99,235,0.18)",
+    background: "rgba(37,99,235,0.06)",
+    fontWeight: 800,
+    fontSize: 13,
+    color: "var(--primary)",
   },
 
   emptyState: {
     marginTop: 30,
-    padding: 24,
-    borderRadius: 18,
-    border: "1px solid #e5e7eb",
+    padding: 26,
+    borderRadius: 20,
+    border: "1px solid var(--border)",
     background: "white",
     textAlign: "center",
-    color: "#666",
+    boxShadow: "var(--shadow-sm)",
   },
 
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#111",
+    fontWeight: 800,
+    color: "var(--text)",
   },
 
   emptySub: {
-    marginTop: 8,
+    marginTop: 10,
+    fontSize: 14,
+    color: "var(--muted)",
+    maxWidth: 420,
+    marginLeft: "auto",
+    marginRight: "auto",
+    lineHeight: 1.5,
   },
 };

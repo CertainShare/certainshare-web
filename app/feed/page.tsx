@@ -41,15 +41,20 @@ export default function FeedPage() {
 
       <div style={styles.container}>
         <div style={styles.headerRow}>
-          <h1 style={styles.title}>Feed</h1>
+          <div>
+            <h1 style={styles.title}>Feed</h1>
+            <div style={styles.subtitle}>
+              Recent activity from your friends and shared albums.
+            </div>
+          </div>
 
           <button onClick={loadFeed} style={styles.refreshButton}>
             Refresh
           </button>
         </div>
 
-        {loading && <p>Loading...</p>}
-        {error && <p style={{ color: "red" }}>{error}</p>}
+        {loading && <p style={styles.statusText}>Loading...</p>}
+        {error && <p style={styles.errorText}>{error}</p>}
 
         {!loading && !error && feed.length === 0 && (
           <div style={styles.emptyState}>
@@ -61,30 +66,35 @@ export default function FeedPage() {
         )}
 
         {!loading && !error && feed.length > 0 && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 18 }}>
             {feed.map((item) => (
               <div key={item.id} style={styles.card}>
                 <div style={styles.cardHeader}>
-                  <div style={{ fontWeight: "bold" }}>
-                    {item.owner?.display_name || "Unknown"}
+                  <div style={styles.userRow}>
+                    <div style={styles.avatarCircle}>
+                      {(item.owner?.display_name || "U")
+                        .slice(0, 1)
+                        .toUpperCase()}
+                    </div>
+
+                    <div>
+                      <div style={styles.username}>
+                        {item.owner?.display_name || "Unknown"}
+                      </div>
+                      <div style={styles.timestamp}>
+                        {new Date(item.created_at).toLocaleString()}
+                      </div>
+                    </div>
                   </div>
 
-                  <div style={styles.timestamp}>
-                    {new Date(item.created_at).toLocaleString()}
-                  </div>
+                  <span style={styles.badge}>{item.visibility}</span>
                 </div>
 
                 {item.type === "single" && (
                   <>
-                    <img
-                      src={item.url}
-                      alt="feed item"
-                      style={styles.image}
-                    />
+                    <img src={item.url} alt="feed item" style={styles.image} />
 
                     <div style={styles.metaRow}>
-                      <span style={styles.badge}>{item.visibility}</span>
-
                       <Link href={`/media/${item.id}`} style={styles.link}>
                         Open
                       </Link>
@@ -94,7 +104,7 @@ export default function FeedPage() {
 
                 {item.type === "folder_batch" && (
                   <>
-                    <div style={{ marginTop: 10, fontSize: 14 }}>
+                    <div style={styles.folderAction}>
                       <b>{item.owner?.display_name}</b> {item.action}
                     </div>
 
@@ -110,8 +120,6 @@ export default function FeedPage() {
                     </div>
 
                     <div style={styles.metaRow}>
-                      <span style={styles.badge}>{item.visibility}</span>
-
                       {item.folder_id && (
                         <Link
                           href={`/album/${item.folder_id}`}
@@ -134,84 +142,146 @@ export default function FeedPage() {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    background: "#f6f7fb",
+    background: "var(--bg)",
     minHeight: "100vh",
   },
 
   container: {
     maxWidth: 900,
     margin: "0 auto",
-    padding: 30,
+    padding: 24,
   },
 
   headerRow: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    gap: 16,
+    paddingTop: 6,
+    paddingBottom: 18,
   },
 
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: 750,
+    letterSpacing: "-0.6px",
+    margin: 0,
+    color: "var(--text)",
+  },
+
+  subtitle: {
+    marginTop: 6,
+    fontSize: 14,
+    color: "var(--muted)",
   },
 
   refreshButton: {
     padding: "10px 14px",
-    borderRadius: 10,
+    borderRadius: 12,
     cursor: "pointer",
-    border: "1px solid #ddd",
+    border: "1px solid var(--border)",
     background: "white",
-    fontWeight: "bold",
+    fontWeight: 700,
+    fontSize: 13,
+    color: "#0f172a",
+    boxShadow: "var(--shadow-sm)",
+  },
+
+  statusText: {
+    marginTop: 16,
+    color: "var(--muted)",
+  },
+
+  errorText: {
+    marginTop: 16,
+    color: "#dc2626",
+    fontWeight: 600,
   },
 
   card: {
-    borderRadius: 16,
-    background: "white",
-    border: "1px solid #e5e7eb",
+    borderRadius: 18,
+    background: "var(--card)",
+    border: "1px solid var(--border)",
     padding: 14,
     marginBottom: 14,
-    boxShadow: "0px 10px 25px rgba(0,0,0,0.05)",
+    boxShadow: "var(--shadow-md)",
   },
 
   cardHeader: {
     display: "flex",
     justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 12,
+    gap: 12,
+  },
+
+  userRow: {
+    display: "flex",
     alignItems: "center",
-    marginBottom: 10,
+    gap: 12,
+  },
+
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    background: "rgba(37,99,235,0.12)",
+    border: "1px solid rgba(37,99,235,0.25)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: 800,
+    color: "#2563eb",
+    fontSize: 14,
+  },
+
+  username: {
+    fontWeight: 750,
+    fontSize: 14,
+    color: "var(--text)",
   },
 
   timestamp: {
+    marginTop: 3,
     fontSize: 12,
-    color: "#666",
+    color: "var(--muted2)",
+  },
+
+  badge: {
+    background: "rgba(15,23,42,0.06)",
+    color: "#0f172a",
+    padding: "6px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    border: "1px solid rgba(15,23,42,0.08)",
+    whiteSpace: "nowrap",
   },
 
   image: {
     width: "100%",
-    borderRadius: 14,
+    borderRadius: 16,
     objectFit: "cover",
-    maxHeight: 420,
+    maxHeight: 460,
+    border: "1px solid rgba(15,23,42,0.06)",
   },
 
   metaRow: {
-    marginTop: 10,
+    marginTop: 12,
     display: "flex",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
-  },
-
-  badge: {
-    background: "#111827",
-    color: "white",
-    padding: "4px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: "bold",
   },
 
   link: {
     textDecoration: "none",
-    fontWeight: "bold",
-    color: "#2563eb",
+    fontWeight: 750,
+    fontSize: 13,
+    color: "var(--primary)",
+    padding: "8px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(37,99,235,0.18)",
+    background: "rgba(37,99,235,0.06)",
   },
 
   previewGrid: {
@@ -223,29 +293,41 @@ const styles: Record<string, React.CSSProperties> = {
 
   previewImg: {
     width: "100%",
-    height: 100,
-    borderRadius: 12,
+    height: 110,
+    borderRadius: 14,
     objectFit: "cover",
-    border: "1px solid #eee",
+    border: "1px solid rgba(15,23,42,0.06)",
+  },
+
+  folderAction: {
+    marginTop: 4,
+    fontSize: 14,
+    color: "var(--text)",
   },
 
   emptyState: {
     marginTop: 30,
-    padding: 24,
-    borderRadius: 18,
-    border: "1px solid #e5e7eb",
+    padding: 26,
+    borderRadius: 20,
+    border: "1px solid var(--border)",
     background: "white",
     textAlign: "center",
-    color: "#666",
+    boxShadow: "var(--shadow-sm)",
   },
 
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#111",
+    fontWeight: 800,
+    color: "var(--text)",
   },
 
   emptySub: {
-    marginTop: 8,
+    marginTop: 10,
+    fontSize: 14,
+    color: "var(--muted)",
+    maxWidth: 420,
+    marginLeft: "auto",
+    marginRight: "auto",
+    lineHeight: 1.5,
   },
 };

@@ -129,9 +129,7 @@ export default function MyMediaPage() {
     refreshAll();
   }, []);
 
-  const usagePercent = storage
-    ? Math.min(storage.percent_full * 100, 100)
-    : 0;
+  const usagePercent = storage ? Math.min(storage.percent_full * 100, 100) : 0;
 
   const usedGB = storage ? storage.used_bytes / 1024 / 1024 / 1024 : 0;
   const totalGB = storage ? storage.max_bytes / 1024 / 1024 / 1024 : 1;
@@ -146,10 +144,8 @@ export default function MyMediaPage() {
       <div style={styles.container}>
         {/* PROFILE HEADER */}
         <div style={styles.profileCard}>
-          {/* Banner */}
           <div style={styles.banner} />
 
-          {/* Profile Row */}
           <div style={styles.profileRow}>
             <div style={styles.profileLeft}>
               <img
@@ -177,7 +173,7 @@ export default function MyMediaPage() {
             </div>
 
             <div style={styles.profileActions}>
-              <Link href="/settings" style={styles.primaryButton}>
+              <Link href="/settings" style={styles.secondaryButton}>
                 Settings
               </Link>
 
@@ -187,12 +183,12 @@ export default function MyMediaPage() {
             </div>
           </div>
 
-          {/* Storage */}
+          {/* STORAGE */}
           {storage && (
             <div style={styles.storageBlock}>
               <div style={styles.storageHeader}>
-                <span style={{ fontWeight: "bold" }}>Storage</span>
-                <span>
+                <span style={styles.storageLabel}>Storage</span>
+                <span style={styles.storageNumbers}>
                   {usedGB.toFixed(2)} GB / {totalGB.toFixed(2)} GB
                 </span>
               </div>
@@ -267,7 +263,7 @@ export default function MyMediaPage() {
 
         {/* ALBUMS VIEW */}
         {!loading && !error && view === "albums" && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 18 }}>
             {albums.length === 0 ? (
               <div style={styles.emptyState}>
                 <div style={styles.emptyTitle}>No albums yet</div>
@@ -317,7 +313,7 @@ export default function MyMediaPage() {
 
         {/* UPLOADS VIEW */}
         {!loading && !error && view === "uploads" && (
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 18 }}>
             {uploads.length === 0 ? (
               <div style={styles.emptyState}>
                 <div style={styles.emptyTitle}>No uploads yet</div>
@@ -367,28 +363,28 @@ export default function MyMediaPage() {
 const styles: Record<string, React.CSSProperties> = {
   page: {
     padding: 0,
-    background: "#f6f7fb",
+    background: "var(--bg)",
     minHeight: "100vh",
   },
 
   container: {
     maxWidth: 1100,
     margin: "0 auto",
-    padding: 30,
+    padding: 24,
   },
 
   profileCard: {
-    borderRadius: 20,
+    borderRadius: 22,
     background: "white",
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     overflow: "hidden",
-    boxShadow: "0px 10px 30px rgba(0,0,0,0.06)",
+    boxShadow: "var(--shadow-md)",
   },
 
   banner: {
     height: 140,
     background:
-      "linear-gradient(135deg, #2563eb 0%, #4f46e5 50%, #9333ea 100%)",
+      "linear-gradient(135deg, rgba(37,99,235,1) 0%, rgba(79,70,229,1) 50%, rgba(147,51,234,1) 100%)",
   },
 
   profileRow: {
@@ -406,13 +402,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   profileImage: {
-    width: 90,
-    height: 90,
+    width: 92,
+    height: 92,
     borderRadius: 999,
     objectFit: "cover",
     border: "4px solid white",
     marginTop: -55,
-    boxShadow: "0px 8px 20px rgba(0,0,0,0.2)",
+    boxShadow: "0px 10px 24px rgba(15,23,42,0.22)",
     background: "#eee",
   },
 
@@ -422,21 +418,23 @@ const styles: Record<string, React.CSSProperties> = {
 
   profileName: {
     fontSize: 22,
-    fontWeight: "bold",
+    fontWeight: 850,
+    letterSpacing: "-0.4px",
+    color: "var(--text)",
   },
 
   profileBio: {
     marginTop: 6,
     fontSize: 14,
-    color: "#555",
-    maxWidth: 500,
-    lineHeight: "18px",
+    color: "var(--muted)",
+    maxWidth: 520,
+    lineHeight: 1.5,
   },
 
   planText: {
     marginTop: 10,
     fontSize: 13,
-    color: "#777",
+    color: "var(--muted2)",
   },
 
   profileActions: {
@@ -445,25 +443,27 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
   },
 
-  primaryButton: {
+  secondaryButton: {
     textDecoration: "none",
-    background: "#2563eb",
-    color: "white",
+    background: "white",
+    border: "1px solid rgba(15,23,42,0.10)",
     padding: "10px 14px",
     borderRadius: 12,
-    fontWeight: "bold",
+    fontWeight: 850,
     fontSize: 13,
-    boxShadow: "0px 8px 20px rgba(37,99,235,0.25)",
+    color: "var(--text)",
+    boxShadow: "var(--shadow-sm)",
   },
 
   darkButton: {
     textDecoration: "none",
-    background: "#111827",
+    background: "#0f172a",
     color: "white",
     padding: "10px 14px",
     borderRadius: 12,
-    fontWeight: "bold",
+    fontWeight: 850,
     fontSize: 13,
+    border: "1px solid rgba(15,23,42,0.20)",
   },
 
   storageBlock: {
@@ -474,31 +474,39 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     fontSize: 13,
-    color: "#555",
     marginBottom: 8,
+  },
+
+  storageLabel: {
+    fontWeight: 850,
+    color: "var(--text)",
+  },
+
+  storageNumbers: {
+    color: "var(--muted)",
+    fontWeight: 650,
   },
 
   storageBarOuter: {
     height: 10,
     borderRadius: 999,
-    background: "#e5e7eb",
+    background: "rgba(15,23,42,0.08)",
     overflow: "hidden",
   },
 
   storageBarInner: {
     height: "100%",
-
     transition: "width 0.2s ease",
   },
 
   storagePercentText: {
     marginTop: 8,
     fontSize: 12,
-    color: "#777",
+    color: "var(--muted2)",
   },
 
   tabRow: {
-    marginTop: 20,
+    marginTop: 18,
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -508,12 +516,12 @@ const styles: Record<string, React.CSSProperties> = {
 
   tabSwitcher: {
     display: "flex",
-    gap: 10,
+    gap: 8,
     padding: 6,
     borderRadius: 999,
     background: "white",
-    border: "1px solid #e5e7eb",
-    boxShadow: "0px 8px 20px rgba(0,0,0,0.04)",
+    border: "1px solid var(--border)",
+    boxShadow: "var(--shadow-sm)",
   },
 
   tabButton: {
@@ -521,15 +529,15 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
     border: "none",
     cursor: "pointer",
-    fontWeight: "bold",
+    fontWeight: 850,
     fontSize: 13,
     background: "transparent",
-    color: "#111827",
+    color: "#475569",
   },
 
   tabButtonActive: {
-    background: "#2563eb",
-    color: "white",
+    background: "rgba(37,99,235,0.12)",
+    color: "#2563eb",
   },
 
   tabActions: {
@@ -541,65 +549,72 @@ const styles: Record<string, React.CSSProperties> = {
   actionButton: {
     textDecoration: "none",
     background: "white",
-    border: "1px solid #e5e7eb",
+    border: "1px solid rgba(15,23,42,0.10)",
     padding: "10px 14px",
     borderRadius: 12,
-    fontWeight: "bold",
+    fontWeight: 850,
     fontSize: 13,
-    color: "#111827",
-    boxShadow: "0px 8px 20px rgba(0,0,0,0.04)",
+    color: "var(--text)",
+    boxShadow: "var(--shadow-sm)",
   },
 
   trashButton: {
     textDecoration: "none",
-    background: "white",
-    border: "1px solid #e5e7eb",
+    background: "rgba(220,38,38,0.06)",
+    border: "1px solid rgba(220,38,38,0.18)",
     padding: "10px 14px",
     borderRadius: 12,
-    fontWeight: "bold",
+    fontWeight: 850,
     fontSize: 13,
     color: "#dc2626",
-    boxShadow: "0px 8px 20px rgba(0,0,0,0.04)",
+    boxShadow: "var(--shadow-sm)",
   },
 
   centerText: {
     marginTop: 30,
     textAlign: "center",
-    color: "#555",
+    color: "var(--muted)",
+    fontWeight: 650,
   },
 
   errorBox: {
-    marginTop: 30,
+    marginTop: 20,
     padding: 14,
-    borderRadius: 14,
-    background: "#fee2e2",
-    border: "1px solid #fecaca",
+    borderRadius: 16,
+    background: "rgba(220,38,38,0.08)",
+    border: "1px solid rgba(220,38,38,0.18)",
     color: "#991b1b",
-    fontWeight: "bold",
+    fontWeight: 800,
   },
 
   emptyState: {
-    marginTop: 30,
-    padding: 24,
-    borderRadius: 18,
-    border: "1px solid #e5e7eb",
+    marginTop: 26,
+    padding: 26,
+    borderRadius: 20,
+    border: "1px solid var(--border)",
     background: "white",
     textAlign: "center",
-    color: "#666",
+    boxShadow: "var(--shadow-sm)",
   },
 
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#111",
+    fontWeight: 850,
+    color: "var(--text)",
   },
 
   emptySub: {
-    marginTop: 8,
+    marginTop: 10,
+    fontSize: 14,
+    color: "var(--muted)",
+    maxWidth: 420,
+    marginLeft: "auto",
+    marginRight: "auto",
+    lineHeight: 1.5,
   },
 
   gridAlbums: {
-    marginTop: 16,
+    marginTop: 14,
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
     gap: 16,
@@ -609,8 +624,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 18,
     overflow: "hidden",
     background: "white",
-    border: "1px solid #e5e7eb",
-    boxShadow: "0px 12px 30px rgba(0,0,0,0.06)",
+    border: "1px solid var(--border)",
+    boxShadow: "var(--shadow-md)",
+    transition: "transform 0.15s ease",
   },
 
   albumLink: {
@@ -622,7 +638,7 @@ const styles: Record<string, React.CSSProperties> = {
   albumImageBox: {
     width: "100%",
     aspectRatio: "1 / 1",
-    background: "#f3f4f6",
+    background: "rgba(15,23,42,0.04)",
   },
 
   albumImage: {
@@ -638,7 +654,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     fontSize: 40,
-    color: "#bbb",
+    color: "#94a3b8",
   },
 
   albumInfo: {
@@ -646,13 +662,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   albumName: {
-    fontWeight: "bold",
+    fontWeight: 850,
     fontSize: 15,
+    color: "var(--text)",
   },
 
   albumCount: {
     fontSize: 13,
-    color: "#666",
+    color: "var(--muted)",
     marginTop: 4,
   },
 
@@ -664,32 +681,34 @@ const styles: Record<string, React.CSSProperties> = {
   deleteButton: {
     width: "100%",
     padding: 10,
-    borderRadius: 12,
+    borderRadius: 14,
     cursor: "pointer",
-    border: "1px solid #eee",
-    background: "#fafafa",
-    fontWeight: "bold",
+    border: "1px solid rgba(220,38,38,0.18)",
+    background: "rgba(220,38,38,0.06)",
+    fontWeight: 850,
+    fontSize: 13,
+    color: "#dc2626",
   },
 
   gridUploads: {
-    marginTop: 16,
+    marginTop: 14,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+    gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
     gap: 14,
   },
 
   uploadCard: {
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: "hidden",
-    border: "1px solid #e5e7eb",
+    border: "1px solid var(--border)",
     background: "white",
-    boxShadow: "0px 12px 30px rgba(0,0,0,0.06)",
+    boxShadow: "var(--shadow-md)",
     position: "relative",
   },
 
   uploadImage: {
     width: "100%",
-    height: 140,
+    height: 150,
     objectFit: "cover",
     display: "block",
   },
@@ -698,12 +717,12 @@ const styles: Record<string, React.CSSProperties> = {
     position: "absolute",
     top: 10,
     right: 10,
-    background: "rgba(17,24,39,0.75)",
+    background: "rgba(15,23,42,0.75)",
     color: "white",
-    padding: "4px 10px",
+    padding: "5px 10px",
     borderRadius: 999,
     fontSize: 12,
-    fontWeight: "bold",
+    fontWeight: 850,
   },
 
   uploadDeleteButton: {
@@ -712,19 +731,24 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
     border: "none",
     background: "white",
-    fontWeight: "bold",
+    fontWeight: 850,
+    fontSize: 13,
+    color: "#dc2626",
+    borderTop: "1px solid rgba(15,23,42,0.06)",
   },
 
   floatingUpload: {
     position: "fixed",
-    bottom: 30,
-    right: 30,
+    bottom: 26,
+    right: 26,
     background: "#2563eb",
     color: "white",
     padding: "14px 18px",
     borderRadius: 999,
-    fontWeight: "bold",
+    fontWeight: 900,
+    fontSize: 14,
     textDecoration: "none",
-    boxShadow: "0px 10px 25px rgba(37,99,235,0.35)",
+    boxShadow: "0px 14px 32px rgba(37,99,235,0.35)",
+    border: "1px solid rgba(37,99,235,0.40)",
   },
 };

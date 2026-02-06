@@ -1,42 +1,81 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [birthdate, setBirthdate] = useState("");
+
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleLogin(e: React.FormEvent) {
+  function isOver13(dateStr: string) {
+    if (!dateStr) return false;
+
+    const birth = new Date(dateStr);
+    if (isNaN(birth.getTime())) return false;
+
+    const today = new Date();
+    const thirteenYearsAgo = new Date(
+      today.getFullYear() - 13,
+      today.getMonth(),
+      today.getDate()
+    );
+
+    return birth <= thirteenYearsAgo;
+  }
+
+  async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (!email || !password || !birthdate) {
+      setError("Please fill out all fields.");
+      return;
+    }
+
+    if (!isOver13(birthdate)) {
+      setError("You must be at least 13 years old to use CertainShare.");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError("You must accept the Terms and Privacy Policy to sign up.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await apiFetch("/login", {
+      const res = await apiFetch("/signup", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          birthdate,
+          accepted_terms: true,
+        }),
       });
 
-      // IMPORTANT: we need to confirm the backend response structure
       const token = res.token;
 
       if (!token) {
-        throw new Error("No token returned from server");
+        throw new Error("Signup succeeded but no token was returned.");
       }
 
       localStorage.setItem("token", token);
 
-      router.push("/");
+      router.push("/mymedia");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -56,12 +95,13 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <h1 style={styles.title}>Sign in</h1>
+          <h1 style={styles.title}>Create account</h1>
           <div style={styles.subtitle}>
-            Log in to access your media, albums, and private shares.
+            Create a private media vault for your family photos, videos, and
+            albums.
           </div>
 
-          <form onSubmit={handleLogin} style={styles.form}>
+          <form onSubmit={handleSignup} style={styles.form}>
             <div style={styles.field}>
               <label style={styles.label}>Email</label>
               <input
@@ -69,7 +109,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 style={styles.input}
                 type="email"
-                placeholder="you@example.com"
+                placeholder="you@email.com"
               />
             </div>
 
@@ -80,8 +120,37 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 style={styles.input}
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Minimum 8 characters"
               />
+            </div>
+
+            <div style={styles.field}>
+              <label style={styles.label}>Date of birth</label>
+              <input
+                value={birthdate}
+                onChange={(e) => setBirthdate(e.target.value)}
+                style={styles.input}
+                type="date"
+              />
+              <div style={styles.hint}>
+                You must be 13 or older to use CertainShare.
+              </div>
+            </div>
+
+            <div style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                style={styles.checkbox}
+              />
+
+              <div style={styles.checkboxText}>
+                I agree to the{" "}
+                <Link href="/settings/legal" style={styles.link}>
+                  Terms of Service and Privacy Policy
+                </Link>
+              </div>
             </div>
 
             {error && <div style={styles.errorBox}>Error: {error}</div>}
@@ -94,23 +163,19 @@ export default function LoginPage() {
                 ...(loading ? styles.primaryButtonDisabled : {}),
               }}
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading ? "Creating account..." : "Create account"}
             </button>
           </form>
 
-          <div style={styles.dividerRow}>
-            <div style={styles.dividerLine} />
-            <div style={styles.dividerText}>OR</div>
-            <div style={styles.dividerLine} />
+          <div style={styles.footerRow}>
+            <div style={styles.footerText}>Already have an account?</div>
+            <Link href="/login" style={styles.footerLink}>
+              Sign in
+            </Link>
           </div>
 
-          <Link href="/signup" style={styles.secondaryButton}>
-            Create an account
-          </Link>
-
-          <div style={styles.footerText}>
-            By continuing, you agree to CertainShare’s privacy-first platform
-            policies.
+          <div style={styles.smallPrint}>
+            CertainShare does not sell your data. Ever.
           </div>
         </div>
       </div>
@@ -130,7 +195,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   container: {
     width: "100%",
-    maxWidth: 440,
+    maxWidth: 460,
   },
 
   card: {
@@ -218,9 +283,47 @@ const styles: Record<string, React.CSSProperties> = {
     outline: "none",
   },
 
-  errorBox: {
+  hint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#6b7280",
+    lineHeight: "16px",
+  },
+
+  checkboxRow: {
     marginTop: 10,
-    marginBottom: 10,
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+    padding: 12,
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "rgba(15,23,42,0.02)",
+  },
+
+  checkbox: {
+    marginTop: 2,
+    cursor: "pointer",
+    width: 16,
+    height: 16,
+  },
+
+  checkboxText: {
+    fontSize: 13,
+    color: "#374151",
+    lineHeight: 1.4,
+    fontWeight: 700,
+  },
+
+  link: {
+    color: "#2563eb",
+    fontWeight: 950,
+    textDecoration: "none",
+  },
+
+  errorBox: {
+    marginTop: 12,
+    marginBottom: 12,
     padding: 12,
     borderRadius: 14,
     background: "rgba(220,38,38,0.08)",
@@ -231,7 +334,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   primaryButton: {
-    marginTop: 6,
+    marginTop: 14,
     width: "100%",
     padding: "12px 14px",
     borderRadius: 14,
@@ -250,43 +353,27 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "none",
   },
 
-  dividerRow: {
+  footerRow: {
     marginTop: 18,
     display: "flex",
-    alignItems: "center",
-    gap: 10,
-  },
-
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    background: "rgba(15,23,42,0.10)",
-  },
-
-  dividerText: {
-    fontSize: 11,
-    fontWeight: 900,
-    color: "#6b7280",
-    letterSpacing: "0.6px",
-  },
-
-  secondaryButton: {
-    marginTop: 18,
-    display: "block",
-    textAlign: "center",
-    padding: "12px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,0.12)",
-    background: "white",
-    textDecoration: "none",
-    fontWeight: 950,
-    fontSize: 14,
-    color: "#111827",
-    boxShadow: "0px 10px 25px rgba(0,0,0,0.05)",
+    justifyContent: "center",
+    gap: 6,
+    fontSize: 13,
   },
 
   footerText: {
-    marginTop: 18,
+    color: "#6b7280",
+    fontWeight: 700,
+  },
+
+  footerLink: {
+    fontWeight: 950,
+    textDecoration: "none",
+    color: "#2563eb",
+  },
+
+  smallPrint: {
+    marginTop: 16,
     fontSize: 12,
     color: "#6b7280",
     lineHeight: "16px",
