@@ -10,18 +10,54 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // track slideshow index per feed item
+  const [slideIndexMap, setSlideIndexMap] = useState<Record<string, number>>(
+    {}
+  );
+
   async function loadFeed() {
     setLoading(true);
     setError("");
 
     try {
       const res = await apiFetch("/feed");
-      setFeed(res.feed || []);
+      const loadedFeed = res.feed || [];
+      setFeed(loadedFeed);
+
+      // initialize slideshow indexes
+      const newMap: Record<string, number> = {};
+      loadedFeed.forEach((item: any) => {
+        newMap[item.id] = 0;
+      });
+      setSlideIndexMap(newMap);
     } catch (err: any) {
       setError(err.message || "Failed to load feed");
     } finally {
       setLoading(false);
     }
+  }
+
+  function nextSlide(itemId: string, total: number) {
+    setSlideIndexMap((prev) => {
+      const current = prev[itemId] || 0;
+      const next = current + 1 >= total ? 0 : current + 1;
+      return { ...prev, [itemId]: next };
+    });
+  }
+
+  function prevSlide(itemId: string, total: number) {
+    setSlideIndexMap((prev) => {
+      const current = prev[itemId] || 0;
+      const next = current - 1 < 0 ? total - 1 : current - 1;
+      return { ...prev, [itemId]: next };
+    });
+  }
+
+  function goToSlide(itemId: string, index: number) {
+    setSlideIndexMap((prev) => ({
+      ...prev,
+      [itemId]: index,
+    }));
   }
 
   useEffect(() => {
@@ -67,75 +103,189 @@ export default function FeedPage() {
 
         {!loading && !error && feed.length > 0 && (
           <div style={{ marginTop: 18 }}>
-            {feed.map((item) => (
-              <div key={item.id} style={styles.card}>
-                <div style={styles.cardHeader}>
-                  <div style={styles.userRow}>
-                    <div style={styles.avatarCircle}>
-                      {(item.owner?.display_name || "U")
-                        .slice(0, 1)
-                        .toUpperCase()}
+            {feed.map((item) => {
+              const slideIndex = slideIndexMap[item.id] || 0;
+
+              const isBatch =
+                item.type === "batch" || item.type === "folder_batch";
+
+              const items = isBatch ? item.items || [] : [];
+
+              const activeItem = items.length > 0 ? items[slideIndex] : null;
+
+              return (
+                <div key={item.id} style={styles.card}>
+                  <div style={styles.cardHeader}>
+                    <div style={styles.userRow}>
+                      <div style={styles.avatarCircle}>
+                        {(item.owner?.display_name || "U")
+                          .slice(0, 1)
+                          .toUpperCase()}
+                      </div>
+
+                      <div>
+                        <div style={styles.username}>
+                          {item.owner?.display_name || "Unknown"}
+                        </div>
+                        <div style={styles.timestamp}>
+                          {new Date(item.created_at).toLocaleString()}
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <div style={styles.username}>
-                        {item.owner?.display_name || "Unknown"}
-                      </div>
-                      <div style={styles.timestamp}>
-                        {new Date(item.created_at).toLocaleString()}
-                      </div>
-                    </div>
+                    <span style={styles.badge}>{item.visibility}</span>
                   </div>
 
-                  <span style={styles.badge}>{item.visibility}</span>
-                </div>
-
-                {item.type === "single" && (
-                  <>
-                    <img src={item.url} alt="feed item" style={styles.image} />
-
-                    <div style={styles.metaRow}>
-                      <Link href={`/media/${item.id}`} style={styles.link}>
-                        Open
-                      </Link>
-                    </div>
-                  </>
-                )}
-
-                {item.type === "folder_batch" && (
-                  <>
-                    <div style={styles.folderAction}>
-                      <b>{item.owner?.display_name}</b> {item.action}
-                    </div>
-
-                    <div style={styles.previewGrid}>
-                      {(item.items || []).slice(0, 6).map((p: any) => (
+                  {/* SINGLE */}
+                  {item.type === "single" && (
+                    <>
+                      <div style={styles.imageWrap}>
                         <img
-                          key={p.id}
-                          src={p.url}
-                          alt="preview"
-                          style={styles.previewImg}
+                          src={item.url}
+                          alt="feed item"
+                          style={styles.image}
                         />
-                      ))}
-                    </div>
+                      </div>
 
-                    <div style={styles.metaRow}>
-                      {item.folder_id && (
-                        <Link
-                          href={`/album/${item.folder_id}`}
-                          style={styles.link}
-                        >
-                          View Album
+                      <div style={styles.metaRow}>
+                        <Link href={`/media/${item.id}`} style={styles.link}>
+                          Open
                         </Link>
+                      </div>
+                    </>
+                  )}
+
+                  {/* FOLDER BATCH */}
+                  {item.type === "folder_batch" && (
+                    <>
+                      <div style={styles.folderAction}>
+                        <b>{item.owner?.display_name}</b> {item.action}
+                      </div>
+
+                      {activeItem && (
+                        <div style={styles.carouselWrap}>
+                          <img
+                            src={activeItem.url}
+                            alt="preview"
+                            style={styles.carouselImage}
+                          />
+
+                          {items.length > 1 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => prevSlide(item.id, items.length)}
+                                style={styles.carouselArrowLeft}
+                              >
+                                ‹
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => nextSlide(item.id, items.length)}
+                                style={styles.carouselArrowRight}
+                              >
+                                ›
+                              </button>
+
+                              <div style={styles.carouselDots}>
+                                {items.map((_: any, idx: number) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => goToSlide(item.id, idx)}
+                                    style={{
+                                      ...styles.dot,
+                                      ...(idx === slideIndex
+                                        ? styles.dotActive
+                                        : {}),
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       )}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+
+                      <div style={styles.metaRow}>
+                        {item.folder_id && (
+                          <Link
+                            href={`/album/${item.folder_id}`}
+                            style={styles.link}
+                          >
+                            View Album
+                          </Link>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* NORMAL BATCH (NON-FOLDER) */}
+                  {item.type === "batch" && (
+                    <>
+                      <div style={styles.folderAction}>
+                        <b>{item.owner?.display_name}</b> {item.action}
+                      </div>
+
+                      {activeItem && (
+                        <div style={styles.carouselWrap}>
+                          <img
+                            src={activeItem.url}
+                            alt="preview"
+                            style={styles.carouselImage}
+                          />
+
+                          {items.length > 1 && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => prevSlide(item.id, items.length)}
+                                style={styles.carouselArrowLeft}
+                              >
+                                ‹
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => nextSlide(item.id, items.length)}
+                                style={styles.carouselArrowRight}
+                              >
+                                ›
+                              </button>
+
+                              <div style={styles.carouselDots}>
+                                {items.map((_: any, idx: number) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => goToSlide(item.id, idx)}
+                                    style={{
+                                      ...styles.dot,
+                                      ...(idx === slideIndex
+                                        ? styles.dotActive
+                                        : {}),
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* FLOATING UPLOAD BUTTON */}
+      <Link href="/upload" style={styles.floatingUpload}>
+        + Upload
+      </Link>
     </main>
   );
 }
@@ -258,12 +408,23 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
   },
 
+  // UPDATED: prevents huge tall images but still keeps clean instagram feel
+  imageWrap: {
+    width: "100%",
+    maxHeight: 520,
+    overflow: "hidden",
+    background: "#000",
+    borderTop: "1px solid rgba(15,23,42,0.06)",
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
+  },
+
   image: {
     width: "100%",
-    borderRadius: 16,
-    objectFit: "cover",
-    maxHeight: 460,
-    border: "1px solid rgba(15,23,42,0.06)",
+    height: "100%",
+    maxHeight: 520,
+    objectFit: "contain",
+    display: "block",
+    background: "#000",
   },
 
   metaRow: {
@@ -282,21 +443,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 12,
     border: "1px solid rgba(37,99,235,0.18)",
     background: "rgba(37,99,235,0.06)",
-  },
-
-  previewGrid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: 8,
-  },
-
-  previewImg: {
-    width: "100%",
-    height: 110,
-    borderRadius: 14,
-    objectFit: "cover",
-    border: "1px solid rgba(15,23,42,0.06)",
   },
 
   folderAction: {
@@ -329,5 +475,105 @@ const styles: Record<string, React.CSSProperties> = {
     marginLeft: "auto",
     marginRight: "auto",
     lineHeight: 1.5,
+  },
+
+  // -------------------------
+  // CAROUSEL STYLES (UPDATED)
+  // -------------------------
+  carouselWrap: {
+    marginTop: 12,
+    position: "relative",
+    width: "100%",
+    height: 520,
+    overflow: "hidden",
+    borderTop: "1px solid rgba(15,23,42,0.06)",
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
+    background: "#000",
+  },
+
+  carouselImage: {
+    width: "100%",
+    height: 520,
+    objectFit: "contain",
+    display: "block",
+    background: "#000",
+  },
+
+  carouselArrowLeft: {
+    position: "absolute",
+    top: "50%",
+    left: 10,
+    transform: "translateY(-50%)",
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "rgba(255,255,255,0.85)",
+    cursor: "pointer",
+    fontWeight: 900,
+    fontSize: 22,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  carouselArrowRight: {
+    position: "absolute",
+    top: "50%",
+    right: 10,
+    transform: "translateY(-50%)",
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "rgba(255,255,255,0.85)",
+    cursor: "pointer",
+    fontWeight: 900,
+    fontSize: 22,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  carouselDots: {
+    position: "absolute",
+    bottom: 10,
+    left: "50%",
+    transform: "translateX(-50%)",
+    display: "flex",
+    gap: 6,
+    padding: "6px 10px",
+    borderRadius: 999,
+    background: "rgba(0,0,0,0.35)",
+  },
+
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 999,
+    border: "none",
+    cursor: "pointer",
+    background: "rgba(255,255,255,0.45)",
+    padding: 0,
+  },
+
+  dotActive: {
+    background: "white",
+  },
+
+  floatingUpload: {
+    position: "fixed",
+    bottom: 26,
+    right: 26,
+    background: "#2563eb",
+    color: "white",
+    padding: "14px 18px",
+    borderRadius: 999,
+    fontWeight: 900,
+    fontSize: 14,
+    textDecoration: "none",
+    boxShadow: "0px 14px 32px rgba(37,99,235,0.35)",
+    border: "1px solid rgba(37,99,235,0.40)",
+    zIndex: 9999,
   },
 };

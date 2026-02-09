@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
+import Link from "next/link";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -141,6 +142,11 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      {/* FLOATING UPLOAD BUTTON */}
+      <Link href="/upload" style={styles.floatingUpload}>
+        + Upload
+      </Link>
     </main>
   );
 }
@@ -334,5 +340,21 @@ const styles: Record<string, React.CSSProperties> = {
     marginLeft: "auto",
     marginRight: "auto",
     lineHeight: 1.5,
+  },
+
+  floatingUpload: {
+    position: "fixed",
+    bottom: 26,
+    right: 26,
+    background: "#2563eb",
+    color: "white",
+    padding: "14px 18px",
+    borderRadius: 999,
+    fontWeight: 900,
+    fontSize: 14,
+    textDecoration: "none",
+    boxShadow: "0px 14px 32px rgba(37,99,235,0.35)",
+    border: "1px solid rgba(37,99,235,0.40)",
+    zIndex: 9999,
   },
 };
