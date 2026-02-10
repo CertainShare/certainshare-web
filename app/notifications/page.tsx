@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
 import Link from "next/link";
+import UploadFab from "../components/UploadFab";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -144,9 +145,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* FLOATING UPLOAD BUTTON */}
-      <Link href="/upload" style={styles.floatingUpload}>
-        + Upload
-      </Link>
+      <UploadFab />
     </main>
   );
 }

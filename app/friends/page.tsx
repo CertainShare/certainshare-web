@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
 import Link from "next/link";
+import UploadFab from "../components/UploadFab";
 
 export default function FriendsPage() {
   const [friends, setFriends] = useState<any[]>([]);
@@ -12,6 +13,12 @@ export default function FriendsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [userResults, setUserResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // NEW: search
+  const [search, setSearch] = useState("");
 
   async function loadAll() {
     setLoading(true);
@@ -32,6 +39,28 @@ export default function FriendsPage() {
     }
   }
 
+  async function searchUsers(q: string) {
+    const cleaned = q.trim();
+
+    if (cleaned.length < 2) {
+      setUserResults([]);
+      return;
+    }
+
+    setSearchLoading(true);
+
+    try {
+      const res = await apiFetch(
+        `/users/search?q=${encodeURIComponent(cleaned)}`
+      );
+      setUserResults(res.results || []);
+    } catch (err) {
+      console.error("Search users failed:", err);
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
   async function accept(userId: string) {
     try {
       await apiFetch("/friends/accept", {
@@ -40,6 +69,7 @@ export default function FriendsPage() {
       });
 
       await loadAll();
+      await searchUsers(search);
     } catch (err: any) {
       alert(err.message);
     }
@@ -53,6 +83,7 @@ export default function FriendsPage() {
       });
 
       await loadAll();
+      await searchUsers(search);
     } catch (err: any) {
       alert(err.message);
     }
@@ -69,8 +100,23 @@ export default function FriendsPage() {
       });
 
       await loadAll();
+      await searchUsers(search);
     } catch (err: any) {
       alert(err.message);
+    }
+  }
+
+  async function sendRequest(userId: string) {
+    try {
+      await apiFetch("/friends/request", {
+        method: "POST",
+        body: JSON.stringify({ userId }),
+      });
+
+      await loadAll();
+      await searchUsers(search);
+    } catch (err: any) {
+      alert(err.message || "Failed to send request");
     }
   }
 
@@ -84,6 +130,33 @@ export default function FriendsPage() {
 
     loadAll();
   }, []);
+
+  // filtering logic
+  const searchLower = search.trim().toLowerCase();
+
+  function matchesSearch(user: any) {
+    if (!searchLower) return true;
+
+    const name = (user.display_name || "").toLowerCase();
+    const id = (user.id || "").toLowerCase();
+
+    return name.includes(searchLower) || id.includes(searchLower);
+  }
+
+  const filteredFriends = useMemo(
+    () => friends.filter(matchesSearch),
+    [friends, searchLower]
+  );
+
+  const filteredIncoming = useMemo(
+    () => incoming.filter(matchesSearch),
+    [incoming, searchLower]
+  );
+
+  const filteredOutgoing = useMemo(
+    () => outgoing.filter(matchesSearch),
+    [outgoing, searchLower]
+  );
 
   return (
     <main style={styles.page}>
@@ -99,37 +172,124 @@ export default function FriendsPage() {
           </div>
         </div>
 
+        {/* SEARCH BAR */}
+        <div style={styles.searchWrap}>
+          <input
+            value={search}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearch(val);
+              searchUsers(val);
+            }}
+            placeholder="Search friends..."
+            style={styles.searchInput}
+          />
+        </div>
+
         {loading && <p style={styles.statusText}>Loading...</p>}
         {error && <p style={styles.errorText}>{error}</p>}
 
         {!loading && !error && (
           <>
+            {/* FIND FRIENDS */}
+            {search.trim().length >= 2 && (
+              <div style={styles.section}>
+                <div style={styles.sectionHeader}>
+                  <div style={styles.sectionTitle}>Find Friends</div>
+                  <span style={styles.countBadge}>{userResults.length}</span>
+                </div>
+
+                {searchLoading ? (
+                  <p style={styles.muted}>Searching...</p>
+                ) : userResults.length === 0 ? (
+                  <p style={styles.muted}>No users found.</p>
+                ) : (
+                  userResults.map((u) => (
+                    <div key={u.id} style={styles.row}>
+                      <Link
+                        href={`/profile/${u.id}`}
+                        style={{ textDecoration: "none", color: "inherit" }}
+                      >
+                        <div style={styles.userBlock}>
+                          <div style={styles.avatarCircleMuted}>
+                            {(u.display_name || u.id || "U")
+                              .slice(0, 1)
+                              .toUpperCase()}
+                          </div>
+
+                          <div>
+                            <div style={styles.username}>
+                              {u.display_name || u.id}
+                            </div>
+                            <div style={styles.userMeta}>
+                              {u.is_private
+                                ? "Private profile"
+                                : "Public profile"}
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+
+                      {u.status === "friends" ? (
+                        <span style={styles.pendingBadge}>Friends</span>
+                      ) : u.status === "outgoing_pending" ? (
+                        <span style={styles.pendingBadge}>Pending</span>
+                      ) : u.status === "incoming_pending" ? (
+                        <button
+                          onClick={() => accept(u.id)}
+                          style={styles.primaryButton}
+                        >
+                          Accept
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => sendRequest(u.id)}
+                          style={styles.primaryButton}
+                        >
+                          Add Friend
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
             {/* INCOMING */}
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
                 <div style={styles.sectionTitle}>Incoming Requests</div>
-                <span style={styles.countBadge}>{incoming.length}</span>
+                <span style={styles.countBadge}>{filteredIncoming.length}</span>
               </div>
 
-              {incoming.length === 0 ? (
-                <p style={styles.muted}>No incoming requests.</p>
+              {filteredIncoming.length === 0 ? (
+                <p style={styles.muted}>
+                  {incoming.length === 0
+                    ? "No incoming requests."
+                    : "No matches found."}
+                </p>
               ) : (
-                incoming.map((r) => (
+                filteredIncoming.map((r) => (
                   <div key={r.id} style={styles.row}>
-                    <div style={styles.userBlock}>
-                      <div style={styles.avatarCircle}>
-                        {(r.display_name || r.id || "U")
-                          .slice(0, 1)
-                          .toUpperCase()}
-                      </div>
-
-                      <div>
-                        <div style={styles.username}>
-                          {r.display_name || r.id}
+                    <Link
+                      href={`/profile/${r.id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <div style={styles.userBlock}>
+                        <div style={styles.avatarCircle}>
+                          {(r.display_name || r.id || "U")
+                            .slice(0, 1)
+                            .toUpperCase()}
                         </div>
-                        <div style={styles.userMeta}>Incoming request</div>
+
+                        <div>
+                          <div style={styles.username}>
+                            {r.display_name || r.id}
+                          </div>
+                          <div style={styles.userMeta}>Incoming request</div>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
 
                     <div style={styles.actions}>
                       <button
@@ -155,28 +315,37 @@ export default function FriendsPage() {
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
                 <div style={styles.sectionTitle}>Outgoing Requests</div>
-                <span style={styles.countBadge}>{outgoing.length}</span>
+                <span style={styles.countBadge}>{filteredOutgoing.length}</span>
               </div>
 
-              {outgoing.length === 0 ? (
-                <p style={styles.muted}>No outgoing requests.</p>
+              {filteredOutgoing.length === 0 ? (
+                <p style={styles.muted}>
+                  {outgoing.length === 0
+                    ? "No outgoing requests."
+                    : "No matches found."}
+                </p>
               ) : (
-                outgoing.map((r) => (
+                filteredOutgoing.map((r) => (
                   <div key={r.id} style={styles.row}>
-                    <div style={styles.userBlock}>
-                      <div style={styles.avatarCircleMuted}>
-                        {(r.display_name || r.id || "U")
-                          .slice(0, 1)
-                          .toUpperCase()}
-                      </div>
-
-                      <div>
-                        <div style={styles.username}>
-                          {r.display_name || r.id}
+                    <Link
+                      href={`/profile/${r.id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <div style={styles.userBlock}>
+                        <div style={styles.avatarCircleMuted}>
+                          {(r.display_name || r.id || "U")
+                            .slice(0, 1)
+                            .toUpperCase()}
                         </div>
-                        <div style={styles.userMeta}>Pending approval</div>
+
+                        <div>
+                          <div style={styles.username}>
+                            {r.display_name || r.id}
+                          </div>
+                          <div style={styles.userMeta}>Pending approval</div>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
 
                     <span style={styles.pendingBadge}>Pending</span>
                   </div>
@@ -188,28 +357,37 @@ export default function FriendsPage() {
             <div style={styles.section}>
               <div style={styles.sectionHeader}>
                 <div style={styles.sectionTitle}>Your Friends</div>
-                <span style={styles.countBadge}>{friends.length}</span>
+                <span style={styles.countBadge}>{filteredFriends.length}</span>
               </div>
 
-              {friends.length === 0 ? (
-                <p style={styles.muted}>No friends yet.</p>
+              {filteredFriends.length === 0 ? (
+                <p style={styles.muted}>
+                  {friends.length === 0
+                    ? "No friends yet."
+                    : "No matches found."}
+                </p>
               ) : (
-                friends.map((f) => (
-                  <div key={f.id} style={styles.row}>
-                    <div style={styles.userBlock}>
-                      <div style={styles.avatarCircle}>
-                        {(f.display_name || f.id || "U")
-                          .slice(0, 1)
-                          .toUpperCase()}
-                      </div>
-
-                      <div>
-                        <div style={styles.username}>
-                          {f.display_name || f.id}
+                filteredFriends.map((f, index) => (
+                  <div key={`${f.id}-${index}`} style={styles.row}>
+                    <Link
+                      href={`/profile/${f.id}`}
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <div style={styles.userBlock}>
+                        <div style={styles.avatarCircle}>
+                          {(f.display_name || f.id || "U")
+                            .slice(0, 1)
+                            .toUpperCase()}
                         </div>
-                        <div style={styles.userMeta}>Friend</div>
+
+                        <div>
+                          <div style={styles.username}>
+                            {f.display_name || f.id}
+                          </div>
+                          <div style={styles.userMeta}>Friend</div>
+                        </div>
                       </div>
-                    </div>
+                    </Link>
 
                     <button
                       onClick={() => remove(f.id)}
@@ -226,9 +404,7 @@ export default function FriendsPage() {
       </div>
 
       {/* FLOATING UPLOAD BUTTON */}
-      <Link href="/upload" style={styles.floatingUpload}>
-        + Upload
-      </Link>
+      <UploadFab />
     </main>
   );
 }
@@ -266,6 +442,21 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 6,
     fontSize: 14,
     color: "var(--muted)",
+  },
+
+  searchWrap: {
+    marginBottom: 14,
+  },
+
+  searchInput: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.12)",
+    background: "white",
+    fontSize: 14,
+    outline: "none",
+    boxShadow: "var(--shadow-sm)",
   },
 
   statusText: {

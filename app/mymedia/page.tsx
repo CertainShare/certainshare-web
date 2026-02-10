@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
+import UploadFab from "../components/UploadFab";
 
 type Album = {
   id: string;
@@ -28,6 +29,16 @@ export default function MyMediaPage() {
 
   const [isPaid, setIsPaid] = useState(false);
   const [storage, setStorage] = useState<any>(null);
+
+  // NEW: multi-select delete mode (uploads)
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedUploadIds, setSelectedUploadIds] = useState<string[]>([]);
+  const selectedCount = selectedUploadIds.length;
+
+  // NEW: multi-select delete mode (albums)
+  const [selectModeAlbums, setSelectModeAlbums] = useState(false);
+  const [selectedAlbumIds, setSelectedAlbumIds] = useState<string[]>([]);
+  const selectedAlbumCount = selectedAlbumIds.length;
 
   async function loadMe() {
     const res = await apiFetch("/users/me");
@@ -109,6 +120,80 @@ export default function MyMediaPage() {
     }
   }
 
+  // NEW: bulk delete uploads
+  async function deleteSelectedUploads() {
+    if (selectedUploadIds.length === 0) return;
+
+    const ok = confirm(
+      isPaid
+        ? `Delete ${selectedUploadIds.length} item(s)? This will move them to Trash.`
+        : `Delete ${selectedUploadIds.length} item(s)? This will permanently delete them.`
+    );
+
+    if (!ok) return;
+
+    try {
+      for (const id of selectedUploadIds) {
+        await apiFetch(`/media/${id}`, { method: "DELETE" });
+      }
+
+      setSelectedUploadIds([]);
+      setSelectMode(false);
+
+      await refreshAll();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete selected uploads.");
+    }
+  }
+
+  // NEW: bulk delete albums
+  async function deleteSelectedAlbums() {
+    if (selectedAlbumIds.length === 0) return;
+
+    const ok = confirm(
+      isPaid
+        ? `Delete ${selectedAlbumIds.length} album(s)? This will move media into Trash.`
+        : `Delete ${selectedAlbumIds.length} album(s)? This will permanently delete all media inside them.`
+    );
+
+    if (!ok) return;
+
+    try {
+      for (const id of selectedAlbumIds) {
+        await apiFetch(`/folders/${id}`, { method: "DELETE" });
+      }
+
+      setSelectedAlbumIds([]);
+      setSelectModeAlbums(false);
+
+      await refreshAll();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete selected albums.");
+    }
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedUploadIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function toggleSelectedAlbum(id: string) {
+    setSelectedAlbumIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedUploadIds([]);
+  }
+
+  function exitSelectModeAlbums() {
+    setSelectModeAlbums(false);
+    setSelectedAlbumIds([]);
+  }
+
   // remember which tab user was on
   useEffect(() => {
     const saved = localStorage.getItem("mymedia_view");
@@ -128,6 +213,12 @@ export default function MyMediaPage() {
 
     refreshAll();
   }, []);
+
+  // NEW: if user switches tabs, exit select mode
+  useEffect(() => {
+    exitSelectMode();
+    exitSelectModeAlbums();
+  }, [view]);
 
   const usagePercent = storage ? Math.min(storage.percent_full * 100, 100) : 0;
 
@@ -162,9 +253,7 @@ export default function MyMediaPage() {
                   {me?.display_name || "Your Profile"}
                 </div>
 
-                <div style={styles.profileBio}>
-                  {me?.bio || "No bio yet."}
-                </div>
+                <div style={styles.profileBio}>{me?.bio || "No bio yet."}</div>
 
                 <div style={styles.planText}>
                   Plan: <b>{isPaid ? "Paid" : "Free"}</b>
@@ -241,10 +330,37 @@ export default function MyMediaPage() {
           </div>
 
           <div style={styles.tabActions}>
-            {view === "albums" && (
-              <Link href="/new-album" style={styles.actionButton}>
-                + New Album
-              </Link>
+            {view === "albums" && !selectModeAlbums && albums.length > 0 && (
+              <button
+                onClick={() => setSelectModeAlbums(true)}
+                style={styles.actionButton}
+              >
+                Select
+              </button>
+            )}
+
+            {view === "albums" && selectModeAlbums && (
+              <button
+                onClick={exitSelectModeAlbums}
+                style={styles.actionButton}
+              >
+                Cancel
+              </button>
+            )}
+
+            {view === "uploads" && !selectMode && uploads.length > 0 && (
+              <button
+                onClick={() => setSelectMode(true)}
+                style={styles.actionButton}
+              >
+                Select
+              </button>
+            )}
+
+            {view === "uploads" && selectMode && (
+              <button onClick={exitSelectMode} style={styles.actionButton}>
+                Cancel
+              </button>
             )}
 
             {isPaid && (
@@ -272,41 +388,84 @@ export default function MyMediaPage() {
                 </div>
               </div>
             ) : (
-              <div style={styles.gridAlbums}>
-                {albums.map((album) => (
-                  <div key={album.id} style={styles.albumCard}>
-                    <Link href={`/album/${album.id}`} style={styles.albumLink}>
-                      <div style={styles.albumImageBox}>
-                        {album.hero_uri ? (
-                          <img
-                            src={album.hero_uri}
-                            alt={album.name}
-                            style={styles.albumImage}
-                          />
-                        ) : (
-                          <div style={styles.albumPlaceholder}>📁</div>
+              <>
+                <div style={styles.gridAlbums}>
+                  {albums.map((album) => {
+                    const selected = selectedAlbumIds.includes(album.id);
+
+                    return (
+                      <div
+                        key={album.id}
+                        style={{
+                          ...styles.albumCard,
+                          ...(selected ? styles.albumCardSelected : {}),
+                        }}
+                        onClick={() => {
+                          if (selectModeAlbums) {
+                            toggleSelectedAlbum(album.id);
+                          }
+                        }}
+                      >
+                        <Link
+                          href={`/album/${album.id}`}
+                          style={styles.albumLink}
+                          onClick={(e) => {
+                            if (selectModeAlbums) e.preventDefault();
+                          }}
+                        >
+                          <div style={styles.albumImageBox}>
+                            {album.hero_uri ? (
+                              <img
+                                src={album.hero_uri}
+                                alt={album.name}
+                                style={styles.albumImage}
+                              />
+                            ) : (
+                              <div style={styles.albumPlaceholder}>📁</div>
+                            )}
+                          </div>
+
+                          <div style={styles.albumInfo}>
+                            <div style={styles.albumName}>{album.name}</div>
+                            <div style={styles.albumCount}>
+                              {album.media?.length || 0} items
+                            </div>
+                          </div>
+                        </Link>
+
+                        {/* Selection check */}
+                        {selectModeAlbums && (
+                          <div style={styles.checkCircle}>
+                            {selected ? "✓" : ""}
+                          </div>
                         )}
                       </div>
+                    );
+                  })}
+                </div>
 
-                      <div style={styles.albumInfo}>
-                        <div style={styles.albumName}>{album.name}</div>
-                        <div style={styles.albumCount}>
-                          {album.media?.length || 0} items
-                        </div>
-                      </div>
-                    </Link>
+                {/* Bulk delete bar */}
+                {selectModeAlbums && (
+                  <div style={styles.bulkBar}>
+                    <button
+                      onClick={deleteSelectedAlbums}
+                      disabled={selectedAlbumCount === 0}
+                      style={{
+                        ...styles.bulkDeleteButton,
+                        ...(selectedAlbumCount === 0
+                          ? styles.bulkDeleteDisabled
+                          : {}),
+                      }}
+                    >
+                      Delete
+                    </button>
 
-                    <div style={styles.albumFooter}>
-                      <button
-                        onClick={() => deleteAlbum(album.id)}
-                        style={styles.deleteButton}
-                      >
-                        Delete
-                      </button>
+                    <div style={styles.bulkText}>
+                      {selectedAlbumCount} selected
                     </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -323,39 +482,75 @@ export default function MyMediaPage() {
                 </div>
               </div>
             ) : (
-              <div style={styles.gridUploads}>
-                {uploads.map((upload) => (
-                  <div key={upload.id} style={styles.uploadCard}>
-                    <Link href={`/media/${upload.id}`}>
-                      <img
-                        src={upload.url}
-                        alt="upload"
-                        style={styles.uploadImage}
-                      />
-                    </Link>
+              <>
+                <div style={styles.gridUploads}>
+                  {uploads.map((upload) => {
+                    const selected = selectedUploadIds.includes(upload.id);
 
-                    <div style={styles.visibilityBadge}>
-                      {upload.visibility}
-                    </div>
+                    return (
+                      <div
+                        key={upload.id}
+                        style={{
+                          ...styles.uploadCard,
+                          ...(selected ? styles.uploadCardSelected : {}),
+                        }}
+                        onClick={() => {
+                          if (selectMode) {
+                            toggleSelected(upload.id);
+                          }
+                        }}
+                      >
+                        <Link
+                          href={`/media/${upload.id}`}
+                          onClick={(e) => {
+                            if (selectMode) e.preventDefault();
+                          }}
+                        >
+                          <img
+                            src={upload.url}
+                            alt="upload"
+                            style={styles.uploadImage}
+                          />
+                        </Link>
 
+                        {/* Selection check */}
+                        {selectMode && (
+                          <div style={styles.checkCircle}>
+                            {selected ? "✓" : ""}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bulk delete bar */}
+                {selectMode && (
+                  <div style={styles.bulkBar}>
                     <button
-                      onClick={() => deleteUpload(upload.id)}
-                      style={styles.uploadDeleteButton}
+                      onClick={deleteSelectedUploads}
+                      disabled={selectedCount === 0}
+                      style={{
+                        ...styles.bulkDeleteButton,
+                        ...(selectedCount === 0
+                          ? styles.bulkDeleteDisabled
+                          : {}),
+                      }}
                     >
                       Delete
                     </button>
+
+                    <div style={styles.bulkText}>{selectedCount} selected</div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}
       </div>
 
       {/* FLOATING UPLOAD BUTTON */}
-      <Link href="/upload" style={styles.floatingUpload}>
-        + Upload
-      </Link>
+      <UploadFab />
     </main>
   );
 }
@@ -371,6 +566,7 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: 1100,
     margin: "0 auto",
     padding: 24,
+    paddingBottom: 90,
   },
 
   profileCard: {
@@ -556,6 +752,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "var(--text)",
     boxShadow: "var(--shadow-sm)",
+    cursor: "pointer",
   },
 
   trashButton: {
@@ -627,6 +824,13 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid var(--border)",
     boxShadow: "var(--shadow-md)",
     transition: "transform 0.15s ease",
+    position: "relative",
+    cursor: "pointer",
+  },
+
+  albumCardSelected: {
+    outline: "3px solid rgba(37,99,235,0.65)",
+    outlineOffset: 0,
   },
 
   albumLink: {
@@ -673,23 +877,6 @@ const styles: Record<string, React.CSSProperties> = {
     marginTop: 4,
   },
 
-  albumFooter: {
-    padding: 14,
-    paddingTop: 0,
-  },
-
-  deleteButton: {
-    width: "100%",
-    padding: 10,
-    borderRadius: 14,
-    cursor: "pointer",
-    border: "1px solid rgba(220,38,38,0.18)",
-    background: "rgba(220,38,38,0.06)",
-    fontWeight: 850,
-    fontSize: 13,
-    color: "#dc2626",
-  },
-
   gridUploads: {
     marginTop: 14,
     display: "grid",
@@ -704,6 +891,12 @@ const styles: Record<string, React.CSSProperties> = {
     background: "white",
     boxShadow: "var(--shadow-md)",
     position: "relative",
+    cursor: "pointer",
+  },
+
+  uploadCardSelected: {
+    outline: "3px solid rgba(37,99,235,0.65)",
+    outlineOffset: 0,
   },
 
   uploadImage: {
@@ -713,42 +906,58 @@ const styles: Record<string, React.CSSProperties> = {
     display: "block",
   },
 
-  visibilityBadge: {
+  checkCircle: {
     position: "absolute",
     top: 10,
     right: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 999,
     background: "rgba(15,23,42,0.75)",
     color: "white",
-    padding: "5px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 850,
+    fontWeight: 950,
+    fontSize: 16,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    border: "2px solid rgba(255,255,255,0.65)",
   },
 
-  uploadDeleteButton: {
-    width: "100%",
-    padding: 10,
-    cursor: "pointer",
-    border: "none",
-    background: "white",
-    fontWeight: 850,
-    fontSize: 13,
-    color: "#dc2626",
-    borderTop: "1px solid rgba(15,23,42,0.06)",
-  },
-
-  floatingUpload: {
+  bulkBar: {
     position: "fixed",
-    bottom: 26,
-    right: 26,
-    background: "#2563eb",
-    color: "white",
-    padding: "14px 18px",
-    borderRadius: 999,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: 14,
+    background: "white",
+    borderTop: "1px solid rgba(15,23,42,0.10)",
+    display: "flex",
+    justifyContent: "flex-start",
+    alignItems: "center",
+    gap: 14,
+    zIndex: 9999,
+    boxShadow: "0px -10px 30px rgba(0,0,0,0.10)",
+  },
+
+  bulkText: {
     fontWeight: 900,
+    color: "var(--text)",
     fontSize: 14,
-    textDecoration: "none",
-    boxShadow: "0px 14px 32px rgba(37,99,235,0.35)",
-    border: "1px solid rgba(37,99,235,0.40)",
+  },
+
+  bulkDeleteButton: {
+    padding: "10px 16px",
+    borderRadius: 12,
+    cursor: "pointer",
+    border: "1px solid rgba(220,38,38,0.25)",
+    background: "rgba(220,38,38,0.10)",
+    color: "#dc2626",
+    fontWeight: 950,
+    fontSize: 13,
+  },
+
+  bulkDeleteDisabled: {
+    opacity: 0.5,
+    cursor: "not-allowed",
   },
 };
