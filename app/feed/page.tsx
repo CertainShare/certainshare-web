@@ -148,6 +148,12 @@ export default function FeedPage() {
                         />
                       </div>
 
+                      {item.note && (
+                        <div style={styles.caption}>
+                      {item.note}
+                        </div>
+                      )}
+
                       <div style={styles.metaRow}>
                         <Link href={`/media/${item.id}`} style={styles.link}>
                           Open
@@ -207,6 +213,11 @@ export default function FeedPage() {
                             </>
                           )}
                         </div>
+                      )}
+                      {activeItem?.note && (
+                      <div style={styles.caption}>
+                      {activeItem.note}
+                      </div>
                       )}
 
                       <div style={styles.metaRow}>
@@ -272,6 +283,11 @@ export default function FeedPage() {
                               </div>
                             </>
                           )}
+                        </div>
+                      )}
+                          {activeItem?.note && (
+                          <div style={styles.caption}>
+                           {activeItem.note}
                         </div>
                       )}
                     </>
@@ -575,4 +591,14 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(37,99,235,0.40)",
     zIndex: 9999,
   },
+
+  caption: {
+  padding: "10px 12px",
+  fontSize: 13,
+  fontWeight: 700,
+  color: "var(--text)",
+  borderBottom: "1px solid rgba(15,23,42,0.06)",
+  background: "white",
+  lineHeight: 1.5,
+},
 };

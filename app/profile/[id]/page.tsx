@@ -28,8 +28,12 @@ export default function ProfilePage({
   const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [uploads, setUploads] = useState<any[]>([]);
   const [status, setStatus] = useState<string>("none");
-  const [albums, setAlbums] = useState<any[]>([]);
+const [blockStatus, setBlockStatus] = useState<string>("none");
+
+const [albums, setAlbums] = useState<any[]>([]);
 const [tab, setTab] = useState<"albums" | "uploads">("uploads");
+
+const [menuOpen, setMenuOpen] = useState(false);
 
 
   const [loading, setLoading] = useState(true);
@@ -54,6 +58,11 @@ const [tab, setTab] = useState<"albums" | "uploads">("uploads");
     const res = await apiFetch(`/friends/status/${id}`);
     setStatus(res.status || "none");
   }
+
+  async function loadBlockStatus() {
+  const res = await apiFetch(`/block/status/${id}`);
+  setBlockStatus(res.status || "none");
+}
 
   async function sendRequest() {
     try {
@@ -110,6 +119,41 @@ const [tab, setTab] = useState<"albums" | "uploads">("uploads");
     }
   }
 
+  async function blockUser() {
+  const ok = confirm("Block this user? They will no longer be able to interact with you.");
+  if (!ok) return;
+
+  try {
+    await apiFetch("/block/user", {
+      method: "POST",
+      body: JSON.stringify({ userId: id }),
+    });
+
+    setMenuOpen(false);
+    await loadBlockStatus();
+    await loadFriendStatus();
+  } catch (err: any) {
+    alert(err.message || "Failed to block user");
+  }
+}
+
+async function unblockUser() {
+  const ok = confirm("Unblock this user?");
+  if (!ok) return;
+
+  try {
+    await apiFetch("/block/unblock", {
+      method: "POST",
+      body: JSON.stringify({ userId: id }),
+    });
+
+    setMenuOpen(false);
+    await loadBlockStatus();
+  } catch (err: any) {
+    alert(err.message || "Failed to unblock user");
+  }
+}
+
   async function refreshAll() {
     setLoading(true);
     setError("");
@@ -117,6 +161,7 @@ const [tab, setTab] = useState<"albums" | "uploads">("uploads");
     try {
       await loadProfile();
       await loadFriendStatus();
+      await loadBlockStatus();
       await loadUploads();
       await loadAlbums();
     } catch (err: any) {
@@ -136,6 +181,20 @@ const [tab, setTab] = useState<"albums" | "uploads">("uploads");
 
     refreshAll();
   }, [id]);
+
+  useEffect(() => {
+  function handleClickOutside() {
+    setMenuOpen(false);
+  }
+
+  if (menuOpen) {
+    window.addEventListener("click", handleClickOutside);
+  }
+
+  return () => {
+    window.removeEventListener("click", handleClickOutside);
+  };
+}, [menuOpen]);
 
   function renderFriendButton() {
     if (status === "friends") {
@@ -222,7 +281,32 @@ const [tab, setTab] = useState<"albums" | "uploads">("uploads");
                   </div>
                 </div>
 
-                <div style={styles.profileActions}>{renderFriendButton()}</div>
+                <div style={styles.profileActions}>
+                {renderFriendButton()}
+
+                <div style={styles.menuWrapper} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    style={styles.dotsButton}
+                    onClick={() => setMenuOpen(!menuOpen)}
+                  >
+                    ⋯
+                  </button>
+
+                  {menuOpen && (
+                    <div style={styles.dropdownMenu}>
+                      {blockStatus === "blocked" ? (
+                        <button style={styles.dropdownItemDanger} onClick={unblockUser}>
+                          Unblock User
+                        </button>
+                      ) : (
+                        <button style={styles.dropdownItemDanger} onClick={blockUser}>
+                          Block User
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
               </div>
             </div>
 
@@ -340,7 +424,7 @@ backButton: {
     borderRadius: 22,
     background: "white",
     border: "1px solid var(--border)",
-    overflow: "hidden",
+    overflow: "visible",
     boxShadow: "var(--shadow-md)",
   },
 
@@ -547,4 +631,50 @@ emptyAlbum: {
     fontWeight: 800,
     fontSize: 13,
   },
+
+  menuWrapper: {
+  position: "relative",
+},
+
+dotsButton: {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  border: "1px solid rgba(15,23,42,0.10)",
+  background: "rgba(15,23,42,0.03)",
+  cursor: "pointer",
+  fontSize: 22,
+  fontWeight: 900,
+  lineHeight: "1px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "var(--text)",
+},
+
+dropdownMenu: {
+  position: "absolute",
+  top: 50,
+  right: 0,
+  width: 180,
+  borderRadius: 14,
+  background: "white",
+  border: "1px solid rgba(15,23,42,0.10)",
+  boxShadow: "0px 18px 40px rgba(0,0,0,0.12)",
+  overflow: "hidden",
+  zIndex: 9999,
+},
+
+dropdownItemDanger: {
+  width: "100%",
+  padding: "12px 14px",
+  border: "none",
+  background: "white",
+  cursor: "pointer",
+  fontWeight: 850,
+  fontSize: 13,
+  textAlign: "left",
+  color: "#dc2626",
+},
+
 };
