@@ -3,13 +3,38 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Bell, Users, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { apiFetch } from "../../lib/api";
 
 export default function TopNav() {
   const pathname = usePathname();
 
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
   function isActive(path: string) {
     return pathname === path;
   }
+
+  async function loadUnreadCount() {
+    try {
+      const res = await apiFetch("/notifications/unread-count");
+      setUnreadCount(res?.count || 0);
+    } catch (err) {
+      // fail silently, don't break nav
+      setUnreadCount(0);
+    }
+  }
+
+  useEffect(() => {
+    loadUnreadCount();
+
+    // Poll every 15 seconds
+    const interval = setInterval(() => {
+      loadUnreadCount();
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={styles.topNavWrapper}>
@@ -39,7 +64,15 @@ export default function TopNav() {
             }}
             title="Notifications"
           >
-            <Bell size={18} />
+            <div style={styles.iconWrap}>
+              <Bell size={18} />
+
+              {unreadCount > 0 && (
+                <div style={styles.badge}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </div>
+              )}
+            </div>
           </Link>
 
           <Link
@@ -130,10 +163,40 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 14,
     color: "#475569",
     transition: "all 0.15s ease",
+    position: "relative",
   },
 
   navIconActive: {
     background: "rgba(37,99,235,0.12)",
     color: "#2563eb",
+  },
+
+  iconWrap: {
+    position: "relative",
+    width: 42,
+    height: 42,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  badge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    minWidth: 16,
+    height: 16,
+    paddingLeft: 5,
+    paddingRight: 5,
+    borderRadius: 999,
+    background: "#dc2626",
+    color: "white",
+    fontSize: 10,
+    fontWeight: 900,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: "16px",
+    border: "2px solid white",
   },
 };

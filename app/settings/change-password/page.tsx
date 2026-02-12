@@ -67,7 +67,7 @@ export default function ChangePasswordPage() {
   return (
     <main style={styles.page}>
       <div style={styles.container}>
-        <Link href="/settings" style={styles.backButton}>
+        <Link href="/settings/privacy" style={styles.backButton}>
           ← Back
         </Link>
 

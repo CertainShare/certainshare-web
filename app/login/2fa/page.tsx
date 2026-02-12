@@ -1,38 +1,48 @@
 "use client";
 
-import { useState } from "react";
-import { apiFetch } from "../../lib/api";
+import { useEffect, useState } from "react";
+import { apiFetch } from "../../../lib/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
+export default function TwoFactorLoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+const [tempToken, setTempToken] = useState<string | null>(null);
 
+  const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleLogin(e: React.FormEvent) {
+  useEffect(() => {
+  const token = sessionStorage.getItem("tempToken");
+
+  if (!token) {
+    router.push("/login");
+    return;
+  }
+
+  setTempToken(token);
+}, [router]);
+
+  async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    try {
-      const res = await apiFetch("/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-
-// If backend says 2FA required, redirect to challenge screen
-if (res.requires2fa && res.tempToken) {
-  sessionStorage.setItem("tempToken", res.tempToken);
-router.push("/login/2fa");
-  return;
+    if (!tempToken) {
+  throw new Error("Missing 2FA session. Please log in again.");
 }
 
-      // Otherwise normal login token
+    try {
+      const res = await apiFetch("/2fa/verify-login", {
+        method: "POST",
+        body: JSON.stringify({
+          tempToken,
+          code,
+        }),
+      });
+
       const token = res.token;
 
       if (!token) {
@@ -40,6 +50,8 @@ router.push("/login/2fa");
       }
 
       localStorage.setItem("token", token);
+      sessionStorage.removeItem("tempToken");
+
       router.push("/feed");
     } catch (err: any) {
       setError(err.message);
@@ -62,31 +74,23 @@ router.push("/login/2fa");
             </div>
           </div>
 
-          <h1 style={styles.title}>Sign in</h1>
+          <h1 style={styles.title}>Two-Factor Authentication</h1>
           <div style={styles.subtitle}>
-            Log in to access your media, albums, and private shares.
+            Enter the 6-digit code from your authenticator app.
           </div>
 
-          <form onSubmit={handleLogin} style={styles.form}>
+          <form onSubmit={handleVerify} style={styles.form}>
             <div style={styles.field}>
-              <label style={styles.label}>Email</label>
+              <label style={styles.label}>6-digit code</label>
               <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={code}
+                onChange={(e) =>
+                  setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))
+                }
                 style={styles.input}
-                type="email"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div style={styles.field}>
-              <label style={styles.label}>Password</label>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={styles.input}
-                type="password"
-                placeholder="Enter your password"
+                type="text"
+                inputMode="numeric"
+                placeholder="123456"
               />
             </div>
 
@@ -94,29 +98,26 @@ router.push("/login/2fa");
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || code.length !== 6}
               style={{
                 ...styles.primaryButton,
-                ...(loading ? styles.primaryButtonDisabled : {}),
+                ...(loading || code.length !== 6
+                  ? styles.primaryButtonDisabled
+                  : {}),
               }}
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading ? "Verifying..." : "Verify"}
             </button>
           </form>
 
-          <div style={styles.dividerRow}>
-            <div style={styles.dividerLine} />
-            <div style={styles.dividerText}>OR</div>
-            <div style={styles.dividerLine} />
-          </div>
-
-          <Link href="/signup" style={styles.secondaryButton}>
-            Create an account
-          </Link>
-
-          <div style={styles.footerText}>
-            By continuing, you agree to CertainShare’s privacy-first platform
-            policies.
+          <div style={styles.footerRow}>
+            <Link
+            href="/login"
+            style={styles.backLink}
+            onClick={() => sessionStorage.removeItem("tempToken")}
+            >
+              ← Back to login
+            </Link>
           </div>
         </div>
       </div>
@@ -183,7 +184,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: 950,
     margin: 0,
     marginTop: 6,
@@ -220,7 +221,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.12)",
     background: "rgba(15,23,42,0.02)",
-    fontSize: 14,
+    fontSize: 18,
+    letterSpacing: "4px",
+    textAlign: "center",
     outline: "none",
   },
 
@@ -256,46 +259,15 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "none",
   },
 
-  dividerRow: {
-    marginTop: 18,
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
+  footerRow: {
+    marginTop: 16,
+    textAlign: "center",
   },
 
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    background: "rgba(15,23,42,0.10)",
-  },
-
-  dividerText: {
-    fontSize: 11,
+  backLink: {
+    fontSize: 13,
     fontWeight: 900,
-    color: "#6b7280",
-    letterSpacing: "0.6px",
-  },
-
-  secondaryButton: {
-    marginTop: 18,
-    display: "block",
-    textAlign: "center",
-    padding: "12px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,0.12)",
-    background: "white",
     textDecoration: "none",
-    fontWeight: 950,
-    fontSize: 14,
-    color: "#111827",
-    boxShadow: "0px 10px 25px rgba(0,0,0,0.05)",
-  },
-
-  footerText: {
-    marginTop: 18,
-    fontSize: 12,
-    color: "#6b7280",
-    lineHeight: "16px",
-    textAlign: "center",
+    color: "#2563eb",
   },
 };

@@ -47,15 +47,15 @@ export default function HomePage() {
             <div style={styles.heroBadge}>Privacy-first media storage</div>
 
             <h1 style={styles.heroTitle}>
-              Your photos and videos.
+              Your Memories.
               <br />
               Shared intentionally.
             </h1>
 
             <p style={styles.heroSubtitle}>
               CertainShare is a private media vault built for families and real
-              life. Store your memories, control who sees them, and never worry
-              about your data being mined.
+              people. Store your memories, control who sees them, and never worry
+              about your data being colected and sold.
             </p>
 
             <div style={styles.heroButtons}>
@@ -94,6 +94,12 @@ export default function HomePage() {
                   Albums, friends, and safe storage.
                 </div>
               </div>
+
+              <div style={styles.trustItem}>
+                <div style={styles.trustTitle}>Funded by users</div>
+                <div style={styles.trustSub}>
+                  Not by your information.
+                  </div></div>
             </div>
           </div>
 
@@ -159,15 +165,15 @@ export default function HomePage() {
           <div style={styles.featureGrid}>
             <FeatureCard
               title="Private media vault"
-              desc="Upload photos and videos to your own secure library. No weird algorithm feed deciding what matters."
+              desc="Upload photos and videos to your own secure library. You choose what is private or public."
             />
             <FeatureCard
               title="Friends + sharing controls"
-              desc="Share albums with specific people. Block users. Keep your media private by default."
+              desc="Share albums with specific people. Block users. Choose exactly who will see each specific upload."
             />
             <FeatureCard
-              title="Social-style feed (without the toxicity)"
-              desc="See shared posts from people you trust, not strangers, not advertisers."
+              title="Social-style feed"
+              desc="See shared posts from people you trust, not strangers, not advertisers. No algorithm choosing what you see."
             />
             <FeatureCard
               title="Storage limits that make sense"

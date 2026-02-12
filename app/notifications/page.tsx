@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
-import Link from "next/link";
 import UploadFab from "../components/UploadFab";
+import { useRouter } from "next/navigation";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,6 +48,32 @@ export default function NotificationsPage() {
       alert(err.message);
     }
   }
+
+  function getNotificationLink(n: any) {
+  if (n.media_id) return `/media/${n.media_id}`;
+  if (n.folder_id) return `/album/${n.folder_id}`;
+  if (n.actor_id) return `/profile/${n.actor_id}`;
+  return null;
+}
+
+async function handleNotificationClick(n: any) {
+  const link = getNotificationLink(n);
+
+  // mark read if needed
+  if (!n.read_at) {
+    try {
+      await apiFetch(`/notifications/${n.id}/read`, { method: "PATCH" });
+    } catch (err) {
+      console.error("Failed to mark notification read:", err);
+    }
+  }
+
+  if (link) {
+    router.push(link);
+  } else {
+    await loadAll(); // just refresh if no link exists
+  }
+}
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -98,9 +125,11 @@ export default function NotificationsPage() {
             {notifications.map((n) => (
               <div
                 key={n.id}
+                onClick={() => handleNotificationClick(n)}
                 style={{
                   ...styles.card,
                   ...(n.read_at ? {} : styles.unreadCard),
+                  cursor: getNotificationLink(n) ? "pointer" : "default",
                 }}
               >
                 <div style={styles.cardHeader}>
@@ -131,9 +160,12 @@ export default function NotificationsPage() {
 
                   {!n.read_at && (
                     <button
-                      onClick={() => markOneRead(n.id)}
-                      style={styles.smallButton}
-                    >
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markOneRead(n.id);
+                    }}
+                    style={styles.smallButton}
+                  >
                       Mark read
                     </button>
                   )}
