@@ -5,16 +5,26 @@ import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
 import Link from "next/link";
 import UploadFab from "../components/UploadFab";
+import { useRouter } from "next/navigation";
 
 export default function FeedPage() {
+  const router = useRouter();
   const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [me, setMe] = useState<any>(null);
 
   // track slideshow index per feed item
   const [slideIndexMap, setSlideIndexMap] = useState<Record<string, number>>(
     {}
   );
+
+  async function loadMe() {
+    const res = await apiFetch("/users/me");
+    setMe(res);
+    return res;
+  }
 
   async function loadFeed() {
     setLoading(true);
@@ -69,7 +79,14 @@ export default function FeedPage() {
       return;
     }
 
-    loadFeed();
+    async function boot() {
+      await loadMe();
+
+      // Normal feed load
+      loadFeed();
+    }
+
+    boot();
   }, []);
 
   return (
@@ -149,9 +166,7 @@ export default function FeedPage() {
                       </div>
 
                       {item.note && (
-                        <div style={styles.caption}>
-                      {item.note}
-                        </div>
+                        <div style={styles.caption}>{item.note}</div>
                       )}
 
                       <div style={styles.metaRow}>
@@ -214,10 +229,9 @@ export default function FeedPage() {
                           )}
                         </div>
                       )}
+
                       {activeItem?.note && (
-                      <div style={styles.caption}>
-                      {activeItem.note}
-                      </div>
+                        <div style={styles.caption}>{activeItem.note}</div>
                       )}
 
                       <div style={styles.metaRow}>
@@ -285,10 +299,9 @@ export default function FeedPage() {
                           )}
                         </div>
                       )}
-                          {activeItem?.note && (
-                          <div style={styles.caption}>
-                           {activeItem.note}
-                        </div>
+
+                      {activeItem?.note && (
+                        <div style={styles.caption}>{activeItem.note}</div>
                       )}
                     </>
                   )}
@@ -593,12 +606,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   caption: {
-  padding: "10px 12px",
-  fontSize: 13,
-  fontWeight: 700,
-  color: "var(--text)",
-  borderBottom: "1px solid rgba(15,23,42,0.06)",
-  background: "white",
-  lineHeight: 1.5,
-},
+    padding: "10px 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    color: "var(--text)",
+    borderBottom: "1px solid rgba(15,23,42,0.06)",
+    background: "white",
+    lineHeight: 1.5,
+  },
 };

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import UploadFlowModal from "@/app/components/UploadFlowModal";
 
 type UploadFabProps = {
@@ -10,6 +11,9 @@ type UploadFabProps = {
 export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
   const [openMenu, setOpenMenu] = useState(false);
   const [flow, setFlow] = useState<"folder" | "media" | null>(null);
+
+  const searchParams = useSearchParams();
+  const [showUploadHint, setShowUploadHint] = useState(false);
 
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -35,12 +39,33 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [openMenu]);
 
+  useEffect(() => {
+    const isNewUser = searchParams.get("new") === "1";
+
+    if (isNewUser) {
+      setShowUploadHint(true);
+
+      const t = setTimeout(() => {
+        setShowUploadHint(false);
+      }, 6000);
+
+      return () => clearTimeout(t);
+    }
+  }, [searchParams]);
+
   return (
     <>
+      {showUploadHint && (
+        <div style={styles.uploadHint}>Upload your first piece of media 👇</div>
+      )}
+
       {/* Floating button */}
       <button
         ref={buttonRef}
-        onClick={() => setOpenMenu((prev) => !prev)}
+        onClick={() => {
+          setShowUploadHint(false);
+          setOpenMenu((prev) => !prev);
+        }}
         style={styles.fab}
         aria-label="Create"
       >
@@ -85,6 +110,22 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  uploadHint: {
+    position: "fixed",
+    bottom: 160,
+    right: 24,
+    background: "white",
+    border: "1px solid rgba(15,23,42,0.10)",
+    borderRadius: 14,
+    padding: "10px 14px",
+    fontSize: 13,
+    fontWeight: 900,
+    color: "var(--text)",
+    boxShadow: "0px 14px 40px rgba(0,0,0,0.18)",
+    zIndex: 99999,
+    maxWidth: 220,
+  },
+
   fab: {
     position: "fixed",
     bottom: 24,

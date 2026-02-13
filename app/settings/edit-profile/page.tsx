@@ -70,6 +70,7 @@ export default function EditProfilePage() {
           size_bytes: file.size,
           folder_id: null,
           session_id: null,
+          is_profile_photo: true,
         }),
       });
 
@@ -98,6 +99,7 @@ export default function EditProfilePage() {
           visibility: "private",
           mobile_only: false,
           note: null,
+          is_profile_photo: true,
         }),
       });
 

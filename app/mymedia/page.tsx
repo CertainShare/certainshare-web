@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
 import UploadFab from "../components/UploadFab";
+import { useRouter } from "next/navigation";
 
 type Album = {
   id: string;
@@ -20,8 +21,30 @@ type Upload = {
 };
 
 export default function MyMediaPage() {
+  const router = useRouter();
   const [view, setView] = useState<"albums" | "uploads">("albums");
   const [me, setMe] = useState<any>(null);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [showOnboardingCarousel, setShowOnboardingCarousel] = useState(false);
+
+  const [showUploadHint, setShowUploadHint] = useState(false);
+
+const [carouselStep, setCarouselStep] = useState(0);
+const [carouselSaving, setCarouselSaving] = useState(false);
+const [carouselError, setCarouselError] = useState("");
+
+  const [setupDisplayName, setSetupDisplayName] = useState("");
+  const [setupBio, setSetupBio] = useState("");
+  const [setupProfilePhotoUrl, setSetupProfilePhotoUrl] = useState("");
+  const [setupIsPrivate, setSetupIsPrivate] = useState(false);
+
+  const [setupSaving, setSetupSaving] = useState(false);
+  const [setupError, setSetupError] = useState("");
+
+  // NEW: profile photo upload state
+  const [profilePhotoUploading, setProfilePhotoUploading] = useState(false);
+  const [profilePhotoError, setProfilePhotoError] = useState("");
+
   const [albums, setAlbums] = useState<Album[]>([]);
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +66,30 @@ export default function MyMediaPage() {
   async function loadMe() {
     const res = await apiFetch("/users/me");
     setMe(res);
+
+    // preload modal values
+    setSetupDisplayName(res?.display_name || "");
+    setSetupBio(res?.bio || "");
+    setSetupProfilePhotoUrl(res?.profile_photo_url || "");
+    setSetupIsPrivate(!!res?.is_private);
+
+    // force modal if profile is not complete
+if (!res?.profileCompleted) {
+  setShowProfileSetup(true);
+  setShowOnboardingCarousel(false);
+} else {
+  setShowProfileSetup(false);
+
+  // if profile is complete but onboarding is not, show onboarding modal
+  if (!res?.hasCompletedOnboarding) {
+     setCarouselStep(0);
+    setShowOnboardingCarousel(true);
+  } else {
+    setShowOnboardingCarousel(false);
+  }
+}
+
+    return res;
   }
 
   async function loadBillingStatus() {
@@ -83,6 +130,140 @@ export default function MyMediaPage() {
       setError(err.message || "Failed to load media");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function generateSessionId() {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  async function uploadProfilePhoto(file: File) {
+    setProfilePhotoUploading(true);
+    setProfilePhotoError("");
+    setSetupError("");
+
+    try {
+      const sessionId = generateSessionId();
+
+      // 1) request signed URL
+      const uploadMeta = await apiFetch("/media/upload-url", {
+        method: "POST",
+        body: JSON.stringify({
+          filename: file.name,
+          mime_type: file.type || "application/octet-stream",
+          size_bytes: file.size,
+          folder_id: null,
+          session_id: sessionId,
+        }),
+      });
+
+      const uploadId = uploadMeta.uploadId;
+      const uploadUrl = uploadMeta.uploadUrl;
+
+      if (!uploadId || !uploadUrl) {
+        throw new Error("Upload URL response missing uploadId/uploadUrl");
+      }
+
+      // 2) PUT to S3
+      const putRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "x-amz-server-side-encryption": "AES256",
+        },
+        body: file,
+      });
+
+      if (!putRes.ok) {
+        const text = await putRes.text();
+        console.error("S3 PUT failed:", putRes.status, text);
+        throw new Error("Failed to upload profile photo");
+      }
+
+      // 3) confirm upload
+      const confirmRes = await apiFetch("/media/confirm", {
+        method: "POST",
+        body: JSON.stringify({
+          uploadId,
+          original_name: "Profile Photo",
+          visibility: "private",
+          mobile_only: false,
+          note: null,
+          folder_id: null,
+          is_profile_photo: true,
+        }),
+      });
+
+      const uploadedUrl = confirmRes?.media?.url;
+
+      if (!uploadedUrl) {
+        throw new Error("Upload confirmed but no URL was returned");
+      }
+
+      // Set the URL so saveProfileSetup will store it
+      setSetupProfilePhotoUrl(uploadedUrl);
+    } catch (err: any) {
+      console.error("Profile photo upload failed:", err);
+      setProfilePhotoError(err.message || "Profile photo upload failed");
+    } finally {
+      setProfilePhotoUploading(false);
+    }
+  }
+
+  async function finishOnboarding() {
+  setCarouselSaving(true);
+  setCarouselError("");
+
+  try {
+    await apiFetch("/users/me/onboarding-complete", {
+      method: "PATCH",
+    });
+
+    setShowOnboardingCarousel(false);
+    router.push("/mymedia?new=1");
+  } catch (err: any) {
+    setCarouselError(err.message || "Failed to complete onboarding.");
+  } finally {
+    setCarouselSaving(false);
+  }
+}
+
+  async function saveProfileSetup() {
+    if (!setupDisplayName.trim()) {
+      setSetupError("Display name is required.");
+      return;
+    }
+
+    setSetupSaving(true);
+    setSetupError("");
+
+    try {
+      await apiFetch("/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({
+          display_name: setupDisplayName,
+          bio: setupBio,
+          profile_photo_url: setupProfilePhotoUrl || null,
+          is_private: setupIsPrivate,
+        }),
+      });
+
+      // reload me from backend so profileCompleted updates
+      const updatedMe = await loadMe();
+
+      if (updatedMe?.profileCompleted) {
+  setShowProfileSetup(false);
+
+  if (!updatedMe?.hasCompletedOnboarding) {
+    setCarouselStep(0);
+    setShowOnboardingCarousel(true);
+  }
+}
+
+    } catch (err: any) {
+      setSetupError(err.message || "Failed to save profile.");
+    } finally {
+      setSetupSaving(false);
     }
   }
 
@@ -214,6 +395,22 @@ export default function MyMediaPage() {
     refreshAll();
   }, []);
 
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const isNew = params.get("new");
+
+  if (isNew === "1") {
+    setShowUploadHint(true);
+
+    setTimeout(() => {
+      setShowUploadHint(false);
+    }, 6000);
+
+    // remove ?new=1 so it doesn't show again if they refresh
+    window.history.replaceState({}, "", "/mymedia");
+  }
+}, []);
+
   // NEW: if user switches tabs, exit select mode
   useEffect(() => {
     exitSelectMode();
@@ -230,7 +427,7 @@ export default function MyMediaPage() {
 
   return (
     <main style={styles.page}>
-      <TopNav />
+      {!showProfileSetup && !showOnboardingCarousel && <TopNav />}
 
       <div style={styles.container}>
         {/* PROFILE HEADER */}
@@ -549,8 +746,257 @@ export default function MyMediaPage() {
         )}
       </div>
 
+      {/* REQUIRED PROFILE SETUP MODAL */}
+      {showProfileSetup && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Set up your profile</div>
+            <div style={styles.modalSubtitle}>
+              Before you start using CertainShare, choose a display name and
+              privacy setting.
+            </div>
+
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>Display name (required)</label>
+              <input
+                value={setupDisplayName}
+                onChange={(e) => setSetupDisplayName(e.target.value)}
+                placeholder="Your name"
+                style={styles.modalInput}
+              />
+            </div>
+
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>Bio (optional)</label>
+              <textarea
+                value={setupBio}
+                onChange={(e) => setSetupBio(e.target.value)}
+                placeholder="Write something short..."
+                style={styles.modalTextarea}
+              />
+            </div>
+
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>Profile photo</label>
+
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  uploadProfilePhoto(file);
+                }}
+                style={styles.modalFileInput}
+              />
+
+              {profilePhotoUploading && (
+                <div style={styles.helperText}>Uploading photo...</div>
+              )}
+
+              {profilePhotoError && (
+                <div style={styles.modalError}>{profilePhotoError}</div>
+              )}
+
+              {setupProfilePhotoUrl && !profilePhotoUploading && (
+                <div style={{ marginTop: 10 }}>
+                  <img
+                    src={setupProfilePhotoUrl}
+                    alt="Profile preview"
+                    style={styles.previewImage}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div style={styles.modalField}>
+              <label style={styles.modalLabel}>Account privacy</label>
+
+              <div style={styles.privacyToggle}>
+                <button
+                  type="button"
+                  onClick={() => setSetupIsPrivate(false)}
+                  style={{
+                    ...styles.privacyButton,
+                    ...(!setupIsPrivate ? styles.privacyButtonActive : {}),
+                  }}
+                >
+                  Public
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSetupIsPrivate(true)}
+                  style={{
+                    ...styles.privacyButton,
+                    ...(setupIsPrivate ? styles.privacyButtonActive : {}),
+                  }}
+                >
+                  Private
+                </button>
+              </div>
+
+              <div style={styles.privacyExplain}>
+                {!setupIsPrivate ? (
+                  <span>
+                    <b>Public:</b> Your profile can be viewed inside CertainShare.
+                  </span>
+                ) : (
+                  <span>
+                    <b>Private:</b> Your profile stays hidden from non-friends.
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {setupError && <div style={styles.modalError}>{setupError}</div>}
+
+            <button
+              onClick={saveProfileSetup}
+              disabled={setupSaving || profilePhotoUploading}
+              style={{
+                ...styles.modalButton,
+                ...(setupSaving || profilePhotoUploading
+                  ? styles.modalButtonDisabled
+                  : {}),
+              }}
+            >
+              {setupSaving ? "Saving..." : "Continue"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ONBOARDING CAROUSEL MODAL */}
+{showOnboardingCarousel && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modalCard}>
+      {/* Top row (discreet skip) */}
+      <div style={styles.carouselTopRow}>
+        <button
+          onClick={finishOnboarding}
+          disabled={carouselSaving}
+          style={styles.skipLink}
+        >
+          Skip
+        </button>
+      </div>
+
+      {/* Step indicator */}
+      <div style={styles.carouselDotsRow}>
+        {[0, 1, 2].map((s) => (
+          <div
+            key={s}
+            style={{
+              ...styles.carouselDot,
+              ...(carouselStep === s ? styles.carouselDotActive : {}),
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Screen 1 */}
+      {carouselStep === 0 && (
+        <>
+          <div style={styles.modalTitle}>Welcome to CertainShare!</div>
+          <div style={styles.modalSubtitle}>
+            CertainShare is a mix of private photo storage and social sharing.
+            Store memories, share them, or do both — with full control over who
+            sees what.
+          </div>
+        </>
+      )}
+
+      {/* Screen 2 */}
+      {carouselStep === 1 && (
+        <>
+          <div style={styles.modalTitle}>Built for privacy</div>
+          <div style={styles.modalSubtitle}>
+            We don’t run ads. We don’t sell data. We don’t track activity.
+            CertainShare gives you real privacy controls — plus screenshot
+            detection for added protection.
+          </div>
+        </>
+      )}
+
+      {/* Screen 3 */}
+      {carouselStep === 2 && (
+        <>
+          <div style={styles.modalTitle}>How it works</div>
+          <div style={styles.modalSubtitle}>
+            Upload photos or videos, organize them into albums, and choose
+            exactly who can view each one. You can change privacy anytime.
+          </div>
+
+          <div style={styles.fakeDemoBox}>
+            <div style={styles.fakeDemoRow}>📤 Upload media</div>
+            <div style={styles.fakeDemoRow}>📁 Create an album</div>
+            <div style={styles.fakeDemoRow}>🔒 Choose privacy settings</div>
+            <div style={styles.fakeDemoRow}>👥 Share with friends</div>
+          </div>
+        </>
+      )}
+
+      {carouselError && <div style={styles.modalError}>{carouselError}</div>}
+
+      <div style={styles.carouselButtons}>
+        <button
+          disabled={carouselStep === 0 || carouselSaving}
+          onClick={() => setCarouselStep((p) => Math.max(0, p - 1))}
+          style={{
+            ...styles.modalSecondaryButton,
+            ...(carouselStep === 0 ? styles.modalSecondaryButtonDisabled : {}),
+          }}
+        >
+          Back
+        </button>
+
+        {carouselStep < 2 ? (
+          <button
+            disabled={carouselSaving}
+            onClick={() => setCarouselStep((p) => Math.min(2, p + 1))}
+            style={styles.modalButton}
+          >
+            Next
+          </button>
+        ) : (
+          <button
+            disabled={carouselSaving}
+            onClick={finishOnboarding}
+            style={{
+              ...styles.modalButton,
+              ...(carouselSaving ? styles.modalButtonDisabled : {}),
+            }}
+          >
+            {carouselSaving ? "Finishing..." : "Get Started"}
+          </button>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
       {/* FLOATING UPLOAD BUTTON */}
+{!showProfileSetup && !showOnboardingCarousel && (
+  <>
+    {showUploadHint && (
+      <div
+        style={styles.uploadHintOverlay}
+        onClick={() => setShowUploadHint(false)}
+      />
+    )}
+
+    {showUploadHint && (
+      <div style={styles.uploadHintTooltip}>
+        Upload your first piece of media!
+      </div>
+    )}
+
+    <div style={showUploadHint ? styles.uploadHintGlow : undefined}>
       <UploadFab />
+    </div>
+  </>
+)}
     </main>
   );
 }
@@ -960,4 +1406,274 @@ const styles: Record<string, React.CSSProperties> = {
     opacity: 0.5,
     cursor: "not-allowed",
   },
+
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(15,23,42,0.55)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    zIndex: 99999,
+  },
+
+  modalCard: {
+    width: "100%",
+    maxWidth: 520,
+    borderRadius: 20,
+    background: "white",
+    border: "1px solid rgba(15,23,42,0.12)",
+    padding: 20,
+    boxShadow: "0px 30px 70px rgba(0,0,0,0.25)",
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 950,
+    color: "var(--text)",
+  },
+
+  modalSubtitle: {
+    marginTop: 8,
+    fontSize: 13,
+    fontWeight: 750,
+    color: "var(--muted)",
+    lineHeight: "18px",
+  },
+
+  modalField: {
+    marginTop: 14,
+  },
+
+  modalLabel: {
+    display: "block",
+    marginBottom: 6,
+    fontSize: 12,
+    fontWeight: 950,
+    color: "var(--muted)",
+    textTransform: "uppercase",
+    letterSpacing: "0.6px",
+  },
+
+  modalInput: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.12)",
+    fontSize: 14,
+    fontWeight: 800,
+    outline: "none",
+    background: "white",
+  },
+
+  modalTextarea: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.12)",
+    fontSize: 14,
+    fontWeight: 800,
+    outline: "none",
+    background: "white",
+    minHeight: 90,
+    resize: "vertical",
+    lineHeight: "20px",
+  },
+
+  modalFileInput: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.12)",
+    fontSize: 14,
+    fontWeight: 800,
+    outline: "none",
+    background: "white",
+  },
+
+  previewImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 999,
+    objectFit: "cover",
+    border: "2px solid rgba(15,23,42,0.12)",
+  },
+
+  privacyToggle: {
+    display: "flex",
+    gap: 10,
+  },
+
+  privacyButton: {
+    flex: 1,
+    padding: "12px 14px",
+    borderRadius: 14,
+    border: "1px solid rgba(15,23,42,0.12)",
+    cursor: "pointer",
+    fontWeight: 950,
+    fontSize: 13,
+    background: "white",
+  },
+
+  privacyButtonActive: {
+    border: "1px solid rgba(37,99,235,0.55)",
+    background: "rgba(37,99,235,0.10)",
+    color: "#2563eb",
+  },
+
+  privacyExplain: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "var(--muted)",
+    fontWeight: 750,
+  },
+
+  helperText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "var(--muted)",
+    fontWeight: 750,
+  },
+
+  modalError: {
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 16,
+    background: "rgba(220,38,38,0.08)",
+    border: "1px solid rgba(220,38,38,0.18)",
+    color: "#991b1b",
+    fontWeight: 950,
+    fontSize: 13,
+  },
+
+  modalButton: {
+    marginTop: 16,
+    width: "100%",
+    padding: "13px 14px",
+    borderRadius: 16,
+    cursor: "pointer",
+    fontWeight: 950,
+    fontSize: 14,
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    boxShadow: "0px 18px 40px rgba(37,99,235,0.18)",
+  },
+
+  modalButtonDisabled: {
+    opacity: 0.65,
+    cursor: "not-allowed",
+    boxShadow: "none",
+  },
+
+    carouselDotsRow: {
+    display: "flex",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 16,
+  },
+
+  carouselDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 999,
+    background: "rgba(15,23,42,0.15)",
+  },
+
+  carouselDotActive: {
+    background: "#2563eb",
+  },
+
+  carouselButtons: {
+    marginTop: 18,
+    display: "flex",
+    gap: 10,
+  },
+
+  modalSecondaryButton: {
+    flex: 1,
+    padding: "13px 14px",
+    borderRadius: 16,
+    cursor: "pointer",
+    fontWeight: 950,
+    fontSize: 14,
+    background: "white",
+    border: "1px solid rgba(15,23,42,0.15)",
+    color: "var(--text)",
+  },
+
+  modalSecondaryButtonDisabled: {
+    opacity: 0.55,
+    cursor: "not-allowed",
+  },
+
+  fakeDemoBox: {
+    marginTop: 14,
+    borderRadius: 16,
+    border: "1px solid rgba(15,23,42,0.10)",
+    background: "rgba(15,23,42,0.03)",
+    padding: 14,
+  },
+
+  fakeDemoRow: {
+    fontSize: 13,
+    fontWeight: 850,
+    padding: "8px 0px",
+    color: "var(--text)",
+  },
+
+  carouselTopRow: {
+  display: "flex",
+  justifyContent: "flex-end",
+  marginBottom: 6,
+},
+
+skipLink: {
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 12,
+  fontWeight: 850,
+  color: "rgba(15,23,42,0.45)",
+  textDecoration: "underline",
+},
+
+uploadHintOverlay: {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: "rgba(15,23,42,0.55)",
+  zIndex: 9998,
+},
+
+uploadHintGlow: {
+  position: "fixed",
+  bottom: 14,
+  right: 14,
+  zIndex: 9999,
+  borderRadius: 999,
+  padding: 10,
+  boxShadow: "0px 0px 0px 6px rgba(37,99,235,0.35)",
+},
+
+uploadHintTooltip: {
+  position: "fixed",
+  bottom: 110,
+  right: 24,
+  background: "white",
+  border: "1px solid rgba(15,23,42,0.12)",
+  borderRadius: 14,
+  padding: "10px 14px",
+  fontSize: 13,
+  fontWeight: 900,
+  color: "var(--text)",
+  boxShadow: "0px 18px 40px rgba(0,0,0,0.18)",
+  zIndex: 9999,
+},
 };
