@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const TERMS_OF_SERVICE = `
 Terms of Service
-Last updated: December 2025
+Last updated: February 2026
 
 By accessing or using CertainShare ("CertainShare," "we," "us," or "our"), you agree to these Terms of Service ("Terms"). If you do not agree, do not use the service.
 
@@ -23,70 +23,114 @@ To operate the platform, you grant CertainShare a limited, non-exclusive license
 Free Accounts: No backups are guaranteed.
 Paid Accounts: Backup retention applies only as explicitly defined by your plan.
 
-5. Right to Remove Content & Accounts
-CertainShare may remove content or suspend accounts if required by law or to protect the platform.
+Even when backups exist, CertainShare does not guarantee that any content can be recovered after deletion.
 
-6. Cooperation With Law Enforcement
+5. Account Deletion & Data Retention
+You may request permanent deletion of your CertainShare account at any time through your account settings.
+
+When you request deletion:
+- Your account is immediately disabled.
+- You are logged out of all devices.
+- Your content will no longer be accessible through the platform.
+
+CertainShare may retain your data for up to 30 days after a deletion request for operational, security, fraud prevention, abuse enforcement, and legal compliance purposes. After this retention period, your account data and stored media will be permanently deleted, subject to any legal obligations that require longer retention.
+
+Account deletion cannot be undone.
+
+If you delete your account while subscribed to a paid plan, your subscription may be canceled automatically.
+
+6. Right to Remove Content & Accounts
+CertainShare may remove content, restrict access, or suspend accounts if required by law or to protect the platform.
+
+7. Cooperation With Law Enforcement
 We may comply with lawful requests, subpoenas, warrants, or court orders.
 
-7. Privacy Policy (Summary)
-We collect minimal data to operate the service.
+8. Privacy Policy (Summary)
+We collect only the data required to operate CertainShare.
 We do not sell user data or run ads.
 
-8. No Security Marketing Claims
+9. No Security Marketing Claims
 We do not claim "military-grade" or "unbreakable" security.
 
-9. CSAM & Illegal Content (Zero Tolerance)
-Confirmed CSAM results in immediate termination and reporting to NCMEC.
+10. CSAM & Illegal Content (Zero Tolerance)
+Confirmed CSAM results in immediate termination and reporting to NCMEC and law enforcement as required.
 
-10. Limitation of Liability
-CertainShare is provided "as-is."
+11. Limitation of Liability
+CertainShare is provided "as-is." We make no warranties regarding uninterrupted availability or the long-term preservation of content.
 
-11. Changes to These Terms
-We may update these Terms as the platform evolves.
+12. Changes to These Terms
+We may update these Terms as the platform evolves. Continued use of CertainShare means you accept the updated Terms.
 
-12. Contact
+13. Contact
 legal@certainshare.com
 `;
 
 const PRIVACY_POLICY = `
 Privacy Policy
-Last updated: December 2025
+Last updated: February 2026
 
-CertainShare is built to collect as little personal data as possible while still operating a secure media-sharing platform.
+CertainShare is built to collect as little personal data as possible while still operating a secure media storage and sharing platform.
 
 1. What We Collect
+We may collect and store:
 - Email address
-- Account settings
-- Uploaded content
-- Security logs (IP, login timestamps)
+- Account settings and profile information
+- Uploaded content (photos and videos)
+- Sharing and folder metadata
+- Security logs (IP address, login timestamps, device/session information)
+- Payment and subscription status (processed through third-party payment providers)
 
 We do not collect:
 - Advertising data
 - Behavioral tracking for monetization
-- Contacts/address books
+- Contacts or address books
 
 2. Why We Collect It
+We collect data only to:
 - Operate the service
-- Prevent fraud/abuse
-- Comply with law
+- Provide storage and sharing functionality
+- Maintain account security
+- Prevent fraud, abuse, and illegal activity
+- Comply with legal obligations
 
 3. Data Sharing
 We do not sell user data.
-We only share data when required to operate the service or comply with law.
 
-4. Child Safety
+We may share limited data only:
+- with service providers required to operate the platform
+- to comply with lawful legal requests
+- to protect CertainShare, our users, or the public from harm or abuse
+
+4. Service Providers
+CertainShare uses third-party providers to operate infrastructure and payment processing. These providers may process data only as required to provide their services, and are not permitted to use your data for advertising purposes.
+
+Examples include:
+- Cloud hosting providers
+- Cloud storage providers
+- Payment processors
+
+5. Data Retention
+We retain your content and account information for as long as your account remains active.
+
+If you request account deletion, your account is disabled immediately and your content is removed from active access. CertainShare may retain data for up to 30 days before permanent deletion for operational, security, fraud prevention, abuse enforcement, and legal compliance purposes.
+
+Certain logs or limited records may be retained longer if required to comply with legal obligations.
+
+6. Child Safety
 We enforce zero tolerance for illegal content including CSAM and report as required.
 
-5. Contact
+7. Legal Requests
+We may disclose information if required by law, subpoena, warrant, or court order.
+
+8. Contact
 privacy@certainshare.com
 `;
 
 const ACCEPTABLE_USE_POLICY = `
 Acceptable Use Policy (AUP)
-Last updated: December 2025
+Last updated: February 2026
 
-You may not upload or share illegal content.
+You may not upload, store, or share illegal content.
 
 Zero tolerance for CSAM.
 Harassment, stalking, threats, and exploitation are prohibited.
@@ -97,7 +141,7 @@ Violations may result in permanent termination.
 
 const ABUSE_AND_SAFETY = `
 Abuse & Safety Reporting
-Last updated: December 2025
+Last updated: February 2026
 
 To report abuse or illegal content:
 report@certainshare.com
@@ -111,22 +155,42 @@ CSAM will be reported to NCMEC and law enforcement as required.
 
 const BACKUPS_AND_RETENTION = `
 Backups & Data Retention Disclosure
-Last updated: December 2025
+Last updated: February 2026
 
+CertainShare is designed to minimize data retention while still supporting account security and legal compliance.
+
+1. Active Accounts
+We store your uploaded media and account data for as long as your account remains active.
+
+2. Deleted Content
+If you delete content or request account deletion, the content is removed from your active account experience. However, CertainShare may retain deleted content for up to 30 days before permanent deletion.
+
+This retention period exists for operational, security, fraud prevention, abuse enforcement, and legal compliance purposes.
+
+3. Account Deletion
+If you request account deletion:
+- your account is immediately disabled
+- you will lose access permanently
+- your data will be permanently deleted after up to 30 days
+
+Account deletion cannot be undone.
+
+4. Backups
 Free accounts:
-- no backups guaranteed
-- deleted content may be unrecoverable
+- no backup guarantees
 
 Paid accounts:
-- backup retention depends on plan tier
-- retention windows are enforced automatically
+- backup retention depends on your subscription tier
 
-No indefinite retention is guaranteed unless explicitly stated.
+Backup copies, if they exist, are also subject to retention limits and may be deleted automatically.
+
+5. Legal Obligations
+In rare cases, we may retain limited data longer if required by law.
 `;
 
 const CONTACT_AND_LEGAL = `
 Contact & Legal Information
-Last updated: December 2025
+Last updated: February 2026
 
 Support: support@certainshare.com
 Legal: legal@certainshare.com
@@ -163,7 +227,6 @@ export default function LegalDetailPage() {
 
   return (
     <main style={styles.page}>
-
       <div style={styles.container}>
         <h1 style={styles.title}>{title}</h1>
 

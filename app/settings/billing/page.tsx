@@ -45,14 +45,14 @@ export default function BillingPage() {
     }
   }
 
-  async function startCheckout(plan: string) {
+  async function startCheckout(plan: string, interval: "monthly" | "yearly") {
     setWorking(true);
     setError("");
 
     try {
       const res = await apiFetch("/billing/checkout", {
         method: "POST",
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, interval }),
       });
 
       if (!res?.url) {
@@ -161,7 +161,7 @@ export default function BillingPage() {
                 price="$2.99/mo"
                 storage="10 GB"
                 note="Perfect for personal use."
-                onSelect={() => startCheckout("basic_monthly")}
+                onSelect={() => startCheckout("basic", "monthly")}
                 disabled={working}
                 highlight={false}
               />
@@ -171,7 +171,7 @@ export default function BillingPage() {
                 price="$6.99/mo"
                 storage="100 GB"
                 note="Best value for serious storage."
-                onSelect={() => startCheckout("pro_monthly")}
+                onSelect={() => startCheckout("pro", "monthly")}
                 disabled={working}
                 highlight={true}
               />
@@ -181,7 +181,7 @@ export default function BillingPage() {
                 price="$17.99/mo"
                 storage="400 GB"
                 note="Built for families and shared albums."
-                onSelect={() => startCheckout("family_monthly")}
+                onSelect={() => startCheckout("family", "monthly")}
                 disabled={working}
                 highlight={false}
               />
