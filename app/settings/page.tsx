@@ -131,8 +131,8 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                <Link href="/plans" style={styles.primaryButton}>
-                  Manage storage
+                <Link href="/settings/billing" style={styles.primaryButton}>
+                  Upgrade Storage
                 </Link>
               </div>
             </div>

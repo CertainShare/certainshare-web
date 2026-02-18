@@ -2,13 +2,34 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+
+  return d.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function capitalize(str: string) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
 
 export default function BillingPage() {
   const [billing, setBilling] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+
+  const searchParams = useSearchParams();
+  const canBuyAddon =
+  (billing?.plan === "pro" || billing?.plan === "family") &&
+  billing?.cancel_at_period_end !== true;
 
   async function loadBilling() {
     setLoading(true);
@@ -23,6 +44,17 @@ export default function BillingPage() {
       setLoading(false);
     }
   }
+
+  async function refreshBilling() {
+  setError("");
+
+  try {
+    const res = await apiFetch("/billing/status");
+    setBilling(res);
+  } catch (err: any) {
+    setError(err.message || "Failed to load billing status");
+  }
+}
 
   async function openPortal() {
     setWorking(true);
@@ -77,6 +109,36 @@ export default function BillingPage() {
     loadBilling();
   }, []);
 
+  useEffect(() => {
+    const success = searchParams.get("success");
+    if (success !== "1") return;
+
+    let tries = 0;
+    const maxTries = 8;
+
+      const t = setInterval(async () => {
+    tries += 1;
+    await refreshBilling();
+
+    if (tries >= maxTries) {
+      clearInterval(t);
+    }
+  }, 2000);
+
+    return () => clearInterval(t);
+  }, [searchParams]);
+
+  const billingStatusLabel =
+    billing?.cancel_at_period_end && billing?.current_period_end
+      ? `Cancels ${formatDate(billing.current_period_end)}`
+      : billing?.cancel_at_period_end
+      ? "Cancels at period end"
+      : "Active";
+
+  const billingStatusValue = billing?.cancel_at_period_end
+    ? "cancelling"
+    : "active";
+
   return (
     <main style={styles.page}>
       <div style={styles.container}>
@@ -114,23 +176,21 @@ export default function BillingPage() {
                   </div>
                 </div>
 
-                <div style={styles.statusPill}>
-                  {billing.status || "active"}
-                </div>
+                <div style={styles.statusPill}>{billingStatusLabel}</div>
               </div>
 
               <div style={styles.planMetaRow}>
                 <div style={styles.planMetaItem}>
                   <div style={styles.planMetaTitle}>Billing status</div>
                   <div style={styles.planMetaValue}>
-                    {billing.status || "active"}
+                    {capitalize(billingStatusValue)}
                   </div>
                 </div>
 
                 <div style={styles.planMetaItem}>
                   <div style={styles.planMetaTitle}>Plan type</div>
                   <div style={styles.planMetaValue}>
-                    {billing.plan || "free"}
+                    {capitalize(billing.plan || "free")}
                   </div>
                 </div>
               </div>
@@ -143,7 +203,7 @@ export default function BillingPage() {
                   ...(working ? styles.manageButtonDisabled : {}),
                 }}
               >
-                {working ? "Opening..." : "Manage billing"}
+                {working ? "Opening..." : "Manage Billing"}
               </button>
             </div>
 
@@ -185,6 +245,20 @@ export default function BillingPage() {
                 disabled={working}
                 highlight={false}
               />
+
+              {canBuyAddon && (
+                <div style={styles.fullWidthCard}>
+                  <PlanCard
+                    name="Add-on Storage"
+                    price="$4.99/mo"
+                    storage="+100 GB"
+                    note="Extra storage for Pro and Family members."
+                    onSelect={() => startCheckout("addon", "monthly")}
+                    disabled={working}
+                    highlight={false}
+                  />
+                </div>
+              )}
             </div>
 
             <div style={styles.footerNote}>
@@ -449,6 +523,10 @@ const styles: Record<string, React.CSSProperties> = {
     gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
     gap: 14,
   },
+
+  fullWidthCard: {
+  gridColumn: "1 / -1",
+},
 
   planCard: {
     borderRadius: 20,
