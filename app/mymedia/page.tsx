@@ -422,8 +422,29 @@ if (!res?.profileCompleted) {
   const usedGB = storage ? storage.used_bytes / 1024 / 1024 / 1024 : 0;
   const totalGB = storage ? storage.max_bytes / 1024 / 1024 / 1024 : 1;
 
-  const barColor =
-    usagePercent >= 90 ? "#dc2626" : usagePercent >= 70 ? "#f97316" : "#2563eb";
+const isOverLimit = storage?.over_limit_mode === true;
+
+const barColor = isOverLimit
+  ? "#dc2626"
+  : usagePercent >= 90
+  ? "#dc2626"
+  : usagePercent >= 70
+  ? "#f97316"
+  : "#2563eb";
+
+const deadlineDate = storage?.over_limit_deadline
+  ? new Date(storage.over_limit_deadline)
+  : null;
+
+const daysRemaining =
+  deadlineDate && isOverLimit
+    ? Math.max(
+        0,
+        Math.ceil(
+          (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        )
+      )
+    : null;
 
   return (
     <main style={styles.page}>
@@ -472,6 +493,18 @@ if (!res?.profileCompleted) {
           {/* STORAGE */}
           {storage && (
             <div style={styles.storageBlock}>
+              {isOverLimit && (
+                <div style={styles.overLimitWarning}>
+                  <strong>Over-Limit Mode Active.</strong>
+                  {daysRemaining !== null && (
+                    <>
+                      {" "}
+                      You have {daysRemaining} day
+                      {daysRemaining === 1 ? "" : "s"} remaining to reduce storage or upgrade.
+                    </>
+                  )}
+                </div>
+              )}
               <div style={styles.storageHeader}>
                 <span style={styles.storageLabel}>Storage</span>
                 <span style={styles.storageNumbers}>
@@ -1675,5 +1708,16 @@ uploadHintTooltip: {
   color: "var(--text)",
   boxShadow: "0px 18px 40px rgba(0,0,0,0.18)",
   zIndex: 9999,
+},
+
+overLimitWarning: {
+  marginBottom: 12,
+  padding: 12,
+  borderRadius: 14,
+  background: "rgba(220,38,38,0.10)",
+  border: "1px solid rgba(220,38,38,0.25)",
+  color: "#991b1b",
+  fontWeight: 850,
+  fontSize: 13,
 },
 };

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import UploadFlowModal from "@/app/components/UploadFlowModal";
+import { apiFetch } from "@/lib/api";
 
 type UploadFabProps = {
   defaultFolderId?: string | null;
@@ -11,6 +12,10 @@ type UploadFabProps = {
 export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
   const [openMenu, setOpenMenu] = useState(false);
   const [flow, setFlow] = useState<"folder" | "media" | null>(null);
+
+  const [overLimit, setOverLimit] = useState(false);
+  const [overLimitDeadline, setOverLimitDeadline] = useState<string | null>(null);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
 
   const searchParams = useSearchParams();
   const [showUploadHint, setShowUploadHint] = useState(false);
@@ -53,6 +58,26 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+  async function loadStorage() {
+    try {
+      const res = await apiFetch("/storage/fullness");
+
+      if (res?.over_limit_mode) {
+        setOverLimit(true);
+        setOverLimitDeadline(res.over_limit_deadline || null);
+      } else {
+        setOverLimit(false);
+        setOverLimitDeadline(null);
+      }
+    } catch {
+      // fail silently
+    }
+  }
+
+  loadStorage();
+}, []);
+
   return (
     <>
       {showUploadHint && (
@@ -64,9 +89,19 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
         ref={buttonRef}
         onClick={() => {
           setShowUploadHint(false);
+
+          if (overLimit) {
+            setShowBlockedModal(true);
+            return;
+          }
+
           setOpenMenu((prev) => !prev);
         }}
-        style={styles.fab}
+        style={{
+          ...styles.fab,
+          opacity: overLimit ? 0.5 : 1,
+          cursor: overLimit ? "not-allowed" : "pointer",
+        }}
         aria-label="Create"
       >
         +
@@ -105,6 +140,39 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
           onClose={() => setFlow(null)}
         />
       )}
+      {showBlockedModal && (
+  <div
+    style={styles.blockBackdrop}
+    onMouseDown={() => setShowBlockedModal(false)}
+  >
+    <div
+      style={styles.blockModal}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      <h3 style={{ marginTop: 0 }}>Uploads Disabled</h3>
+
+      <p style={{ fontSize: 14 }}>
+        You are currently in Over-Limit Mode.
+        {overLimitDeadline && (
+          <>
+            <br />
+            Reduce storage or upgrade before{" "}
+            {new Date(overLimitDeadline).toLocaleDateString()}.
+          </>
+        )}
+      </p>
+
+      <button
+        style={styles.blockButton}
+        onClick={() => {
+          window.location.href = "/settings/billing";
+        }}
+      >
+        Manage Plan
+      </button>
+    </div>
+  </div>
+)}
     </>
   );
 }
@@ -176,4 +244,33 @@ const styles: Record<string, React.CSSProperties> = {
   menuText: {
     display: "block",
   },
+
+  blockBackdrop: {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.6)",
+  zIndex: 10000,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+blockModal: {
+  background: "white",
+  padding: 24,
+  borderRadius: 16,
+  width: 320,
+  textAlign: "center",
+},
+
+blockButton: {
+  marginTop: 16,
+  padding: "10px 14px",
+  borderRadius: 8,
+  border: "none",
+  background: "#2563eb",
+  color: "white",
+  fontWeight: 700,
+  cursor: "pointer",
+},
 };

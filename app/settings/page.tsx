@@ -45,12 +45,33 @@ export default function SettingsPage() {
   const usedGB = storage ? storage.used_bytes / 1024 / 1024 / 1024 : 0;
   const totalGB = storage ? storage.max_bytes / 1024 / 1024 / 1024 : 1;
 
-  const usagePercent = storage
-    ? Math.min(storage.percent_full * 100, 100)
-    : 0;
+const usagePercent = storage
+  ? Math.min(storage.percent_full * 100, 100)
+  : 0;
 
-  const barColor =
-    usagePercent >= 90 ? "#dc2626" : usagePercent >= 70 ? "#f97316" : "#2563eb";
+const isOverLimit = storage?.over_limit_mode === true;
+
+const barColor = isOverLimit
+  ? "#dc2626"
+  : usagePercent >= 90
+  ? "#dc2626"
+  : usagePercent >= 70
+  ? "#f97316"
+  : "#2563eb";
+
+const deadlineDate = storage?.over_limit_deadline
+  ? new Date(storage.over_limit_deadline)
+  : null;
+
+const daysRemaining =
+  deadlineDate && isOverLimit
+    ? Math.max(
+        0,
+        Math.ceil(
+          (deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        )
+      )
+    : null;
 
   return (
     <main style={styles.page}>
@@ -110,6 +131,18 @@ export default function SettingsPage() {
               <div style={styles.sectionLabel}>Storage</div>
 
               <div style={styles.card}>
+                {isOverLimit && (
+                  <div style={styles.overLimitWarning}>
+                    <strong>Over-Limit Mode Active.</strong>
+                    {daysRemaining !== null && (
+                      <>
+                        {" "}
+                        You have {daysRemaining} day
+                        {daysRemaining === 1 ? "" : "s"} remaining to reduce storage or upgrade.
+                      </>
+                    )}
+                  </div>
+                )}
                 <div style={styles.storageHeader}>
                   <span style={styles.storageNumbers}>
                     <b>{usedGB.toFixed(2)} GB</b> of{" "}
@@ -130,10 +163,15 @@ export default function SettingsPage() {
                     }}
                   />
                 </div>
-
-                <Link href="/settings/billing" style={styles.primaryButton}>
-                  Upgrade Storage
-                </Link>
+                  <Link
+                    href="/settings/billing"
+                    style={{
+                      ...styles.primaryButton,
+                      ...(isOverLimit ? styles.primaryButtonDanger : {}),
+                    }}
+                  >
+                    {isOverLimit ? "Upgrade Now" : "Upgrade Storage"}
+                  </Link>
               </div>
             </div>
 
@@ -386,4 +424,21 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(220,38,38,0.18)",
     boxShadow: "var(--shadow-sm)",
   },
+
+  overLimitWarning: {
+  marginBottom: 14,
+  padding: 12,
+  borderRadius: 14,
+  background: "rgba(220,38,38,0.10)",
+  border: "1px solid rgba(220,38,38,0.25)",
+  color: "#991b1b",
+  fontWeight: 850,
+  fontSize: 13,
+},
+
+primaryButtonDanger: {
+  background: "#dc2626",
+  border: "1px solid rgba(220,38,38,0.45)",
+  boxShadow: "0px 14px 28px rgba(220,38,38,0.25)",
+},
 };
