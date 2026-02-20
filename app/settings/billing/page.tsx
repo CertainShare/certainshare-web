@@ -30,6 +30,8 @@ export default function BillingPage() {
   const canBuyAddon =
   (billing?.plan === "pro" || billing?.plan === "family") &&
   billing?.cancel_at_period_end !== true;
+  const billingActionRequired =
+  billing?.billing_action_required === true;
 
   async function loadBilling() {
     setLoading(true);
@@ -166,6 +168,15 @@ export default function BillingPage() {
 
         {!loading && !error && billing && (
           <>
+                    {billingActionRequired && (
+            <div style={styles.billingWarning}>
+              <strong>Payment Method Required</strong>
+              <div style={{ marginTop: 6 }}>
+                We were unable to process your payment.
+                Please update your payment method to restore your plan.
+              </div>
+            </div>
+          )}
             {/* CURRENT PLAN */}
             <div style={styles.currentPlanCard}>
               <div style={styles.planHeader}>
@@ -620,4 +631,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     textAlign: "center",
   },
+
+  billingWarning: {
+  marginTop: 14,
+  marginBottom: 18,
+  padding: 14,
+  borderRadius: 16,
+  background: "rgba(220,38,38,0.12)",
+  border: "1px solid rgba(220,38,38,0.30)",
+  color: "#991b1b",
+  fontWeight: 900,
+  fontSize: 13,
+},
 };
