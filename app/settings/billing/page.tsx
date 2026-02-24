@@ -130,16 +130,20 @@ export default function BillingPage() {
     return () => clearInterval(t);
   }, [searchParams]);
 
-  const billingStatusLabel =
-    billing?.cancel_at_period_end && billing?.current_period_end
-      ? `Cancels ${formatDate(billing.current_period_end)}`
-      : billing?.cancel_at_period_end
-      ? "Cancels at period end"
-      : "Active";
+    const accountState = billing?.account_state || "active";
 
-  const billingStatusValue = billing?.cancel_at_period_end
-    ? "cancelling"
-    : "active";
+    let accountStateLabel = "Active";
+    let accountStateColor = "#16a34a"; // green
+
+    if (accountState === "grace") {
+      accountStateLabel = "Grace Period";
+      accountStateColor = "#ca8a04"; // yellow
+    }
+
+    if (accountState === "frozen") {
+      accountStateLabel = "Frozen";
+      accountStateColor = "#dc2626"; // red
+    }
 
   return (
     <main style={styles.page}>
@@ -187,14 +191,36 @@ export default function BillingPage() {
                   </div>
                 </div>
 
-                <div style={styles.statusPill}>{billingStatusLabel}</div>
+                <div
+                  style={{
+                    ...styles.statusPill,
+                    background: `${accountStateColor}15`,
+                    border: `1px solid ${accountStateColor}40`,
+                    color: accountStateColor,
+                  }}
+                >
+                  {accountStateLabel}
+                </div>
               </div>
+
+              {/* Deadline messaging */}
+              {billing.grace_deadline && accountState === "grace" && (
+                <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700 }}>
+                  Grace period ends {formatDate(billing.grace_deadline)}
+                </div>
+              )}
+
+              {billing.frozen_deadline && accountState === "frozen" && (
+                <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700 }}>
+                  Auto-delete on {formatDate(billing.frozen_deadline)}
+                </div>
+              )}
 
               <div style={styles.planMetaRow}>
                 <div style={styles.planMetaItem}>
-                  <div style={styles.planMetaTitle}>Billing status</div>
+                  <div style={styles.planMetaTitle}>Account state</div>
                   <div style={styles.planMetaValue}>
-                    {capitalize(billingStatusValue)}
+                    {capitalize(accountState)}
                   </div>
                 </div>
 
@@ -430,7 +456,7 @@ const styles: Record<string, React.CSSProperties> = {
   planHeader: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     flexWrap: "wrap",
     gap: 10,
   },

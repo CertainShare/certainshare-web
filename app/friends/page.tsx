@@ -5,6 +5,7 @@ import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
 import Link from "next/link";
 import UploadFab from "../components/UploadFab";
+import { deriveBillingFlags, getClientBillingStatus } from "../../lib/billingGate";
 
 export default function FriendsPage() {
   const [friends, setFriends] = useState<any[]>([]);
@@ -19,6 +20,9 @@ export default function FriendsPage() {
 
   // NEW: search
   const [search, setSearch] = useState("");
+
+  const billingFlags = deriveBillingFlags(getClientBillingStatus());
+  const isFrozen = billingFlags.isFrozen;
 
   async function loadAll() {
     setLoading(true);
@@ -40,6 +44,8 @@ export default function FriendsPage() {
   }
 
   async function searchUsers(q: string) {
+    if (isFrozen) return;
+    
     const cleaned = q.trim();
 
     if (cleaned.length < 2) {
@@ -128,6 +134,18 @@ export default function FriendsPage() {
       return;
     }
 
+    const billingFlags = deriveBillingFlags(getClientBillingStatus());
+    const frozen = billingFlags.isFrozen;
+
+    if (frozen) {
+      setLoading(false);
+      setError("");
+      setFriends([]);
+      setIncoming([]);
+      setOutgoing([]);
+      return;
+    }
+
     loadAll();
   }, []);
 
@@ -172,17 +190,32 @@ export default function FriendsPage() {
           </div>
         </div>
 
+        {isFrozen && (
+          <div style={styles.frozenBanner}>
+            Account frozen — friend actions are disabled. Manage billing to restore access.
+          </div>
+        )}
+
         {/* SEARCH BAR */}
         <div style={styles.searchWrap}>
           <input
             value={search}
+            disabled={isFrozen}
             onChange={(e) => {
+              if (isFrozen) return;
               const val = e.target.value;
               setSearch(val);
               searchUsers(val);
             }}
-            placeholder="Search friends..."
-            style={styles.searchInput}
+            placeholder={
+              isFrozen
+                ? "Search disabled while account is frozen"
+                : "Search friends..."
+            }
+            style={{
+              ...styles.searchInput,
+              ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+            }}
           />
         </div>
 
@@ -236,18 +269,32 @@ export default function FriendsPage() {
                         <span style={styles.pendingBadge}>Pending</span>
                       ) : u.status === "incoming_pending" ? (
                         <button
-                          onClick={() => accept(u.id)}
-                          style={styles.primaryButton}
+                          disabled={isFrozen}
+                          onClick={() => {
+                            if (isFrozen) return;
+                            accept(u.id);
+                          }}
+                          style={{
+                            ...styles.primaryButton,
+                            ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                          }}
                         >
                           Accept
                         </button>
                       ) : (
-                        <button
-                          onClick={() => sendRequest(u.id)}
-                          style={styles.primaryButton}
-                        >
-                          Add Friend
-                        </button>
+                            <button
+                              disabled={isFrozen}
+                              onClick={() => {
+                                if (isFrozen) return;
+                                sendRequest(u.id);
+                              }}
+                              style={{
+                                ...styles.primaryButton,
+                                ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                              }}
+                            >
+                              Add Friend
+                            </button>
                       )}
                     </div>
                   ))
@@ -293,18 +340,32 @@ export default function FriendsPage() {
 
                     <div style={styles.actions}>
                       <button
-                        onClick={() => accept(r.id)}
-                        style={styles.primaryButton}
+                        disabled={isFrozen}
+                        onClick={() => {
+                          if (isFrozen) return;
+                          accept(r.id);
+                        }}
+                        style={{
+                          ...styles.primaryButton,
+                          ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                        }}
                       >
                         Accept
                       </button>
 
-                      <button
-                        onClick={() => reject(r.id)}
-                        style={styles.grayButton}
-                      >
-                        Reject
-                      </button>
+                        <button
+                          disabled={isFrozen}
+                          onClick={() => {
+                            if (isFrozen) return;
+                            reject(r.id);
+                          }}
+                          style={{
+                            ...styles.grayButton,
+                            ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                          }}
+                        >
+                          Reject
+                        </button>
                     </div>
                   </div>
                 ))
@@ -389,12 +450,19 @@ export default function FriendsPage() {
                       </div>
                     </Link>
 
-                    <button
-                      onClick={() => remove(f.id)}
-                      style={styles.grayButton}
-                    >
-                      Remove
-                    </button>
+                      <button
+                        disabled={isFrozen}
+                        onClick={() => {
+                          if (isFrozen) return;
+                          remove(f.id);
+                        }}
+                        style={{
+                          ...styles.grayButton,
+                          ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                        }}
+                      >
+                        Remove
+                      </button>
                   </div>
                 ))
               )}

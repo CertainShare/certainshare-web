@@ -5,14 +5,19 @@ import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
 import UploadFab from "../components/UploadFab";
 import { useRouter } from "next/navigation";
+import { deriveBillingFlags, getClientBillingStatus } from "../../lib/billingGate";
 
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const router = useRouter();
+  const billingFlags = deriveBillingFlags(getClientBillingStatus());
+  const isFrozen = billingFlags.isFrozen;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [showFrozenModal, setShowFrozenModal] = useState(false);
 
   async function loadAll() {
     setLoading(true);
@@ -36,7 +41,12 @@ export default function NotificationsPage() {
       await apiFetch("/notifications/read-all", { method: "PATCH" });
       await loadAll();
     } catch (err: any) {
-      alert(err.message);
+      if (err?.message === "Account frozen") {
+        setShowFrozenModal(true);
+        return;
+      }
+
+      console.error("Failed to mark all read:", err);
     }
   }
 
@@ -45,41 +55,57 @@ export default function NotificationsPage() {
       await apiFetch(`/notifications/${id}/read`, { method: "PATCH" });
       await loadAll();
     } catch (err: any) {
-      alert(err.message);
-    }
-  }
+      if (err?.message === "Account frozen") {
+        setShowFrozenModal(true);
+        return;
+      }
 
-  function getNotificationLink(n: any) {
-  if (n.media_id) return `/media/${n.media_id}`;
-  if (n.folder_id) return `/album/${n.folder_id}`;
-  if (n.actor_id) return `/profile/${n.actor_id}`;
-  return null;
-}
-
-async function handleNotificationClick(n: any) {
-  const link = getNotificationLink(n);
-
-  // mark read if needed
-  if (!n.read_at) {
-    try {
-      await apiFetch(`/notifications/${n.id}/read`, { method: "PATCH" });
-    } catch (err) {
       console.error("Failed to mark notification read:", err);
     }
   }
 
-  if (link) {
-    router.push(link);
-  } else {
-    await loadAll(); // just refresh if no link exists
+  function getNotificationLink(n: any) {
+    if (n.media_id) return `/media/${n.media_id}`;
+    if (n.folder_id) return `/album/${n.folder_id}`;
+    if (n.actor_id) return `/profile/${n.actor_id}`;
+    return null;
   }
-}
+
+  async function handleNotificationClick(n: any) {
+    const link = getNotificationLink(n);
+
+    // mark read if needed
+    if (!n.read_at) {
+      try {
+        await apiFetch(`/notifications/${n.id}/read`, { method: "PATCH" });
+      } catch (err: any) {
+        if (err?.message === "Account frozen") {
+          setShowFrozenModal(true);
+          return;
+        }
+        console.error("Failed to mark notification read:", err);
+      }
+    }
+
+    if (link) {
+      router.push(link);
+    } else {
+      await loadAll();
+    }
+  }
 
   useEffect(() => {
     const token = localStorage.getItem("token");
 
     if (!token) {
       window.location.href = "/login";
+      return;
+    }
+
+    if (isFrozen) {
+      setLoading(false);
+      setNotifications([]);
+      setUnreadCount(0);
       return;
     }
 
@@ -92,6 +118,13 @@ async function handleNotificationClick(n: any) {
 
       <div style={styles.container}>
         <div style={styles.headerRow}>
+          {isFrozen && (
+            <div style={styles.frozenBanner}>
+              Account frozen — notification actions are disabled. Manage billing
+              to restore access.
+            </div>
+          )}
+
           <div>
             <h1 style={styles.title}>Notifications</h1>
             <div style={styles.subtitle}>
@@ -102,7 +135,17 @@ async function handleNotificationClick(n: any) {
           <div style={styles.headerActions}>
             <span style={styles.unreadBadge}>{unreadCount} unread</span>
 
-            <button onClick={markAllRead} style={styles.button}>
+            <button
+              disabled={isFrozen}
+              onClick={() => {
+                if (isFrozen) return;
+                markAllRead();
+              }}
+              style={{
+                ...styles.button,
+                ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+              }}
+            >
               Mark all read
             </button>
           </div>
@@ -125,11 +168,20 @@ async function handleNotificationClick(n: any) {
             {notifications.map((n) => (
               <div
                 key={n.id}
-                onClick={() => handleNotificationClick(n)}
+                onClick={() => {
+                  if (isFrozen) return;
+                  handleNotificationClick(n);
+                }}
                 style={{
                   ...styles.card,
                   ...(n.read_at ? {} : styles.unreadCard),
-                  cursor: getNotificationLink(n) ? "pointer" : "default",
+                  cursor:
+                    isFrozen
+                      ? "default"
+                      : getNotificationLink(n)
+                      ? "pointer"
+                      : "default",
+                  ...(isFrozen ? { opacity: 0.85 } : {}),
                 }}
               >
                 <div style={styles.cardHeader}>
@@ -160,12 +212,19 @@ async function handleNotificationClick(n: any) {
 
                   {!n.read_at && (
                     <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      markOneRead(n.id);
-                    }}
-                    style={styles.smallButton}
-                  >
+                      disabled={isFrozen}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isFrozen) return;
+                        markOneRead(n.id);
+                      }}
+                      style={{
+                        ...styles.smallButton,
+                        ...(isFrozen
+                          ? { opacity: 0.5, cursor: "not-allowed" }
+                          : {}),
+                      }}
+                    >
                       Mark read
                     </button>
                   )}
@@ -175,6 +234,41 @@ async function handleNotificationClick(n: any) {
           </div>
         )}
       </div>
+
+      {showFrozenModal && (
+        <div
+          style={styles.modalBackdrop}
+          onMouseDown={() => setShowFrozenModal(false)}
+        >
+          <div
+            style={styles.modalCard}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: 8 }}>Account Frozen</h3>
+
+            <p style={{ fontSize: 14, marginTop: 0, marginBottom: 16 }}>
+              Your account is currently frozen. Notification actions are disabled
+              until billing is resolved.
+            </p>
+
+            <div style={styles.modalActions}>
+              <button
+                style={styles.modalSecondary}
+                onClick={() => setShowFrozenModal(false)}
+              >
+                Close
+              </button>
+
+              <button
+                style={styles.modalPrimary}
+                onClick={() => router.push("/settings/billing")}
+              >
+                Manage Billing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FLOATING UPLOAD BUTTON */}
       <UploadFab />
@@ -387,5 +481,62 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "0px 14px 32px rgba(37,99,235,0.35)",
     border: "1px solid rgba(37,99,235,0.40)",
     zIndex: 9999,
+  },
+
+  frozenBanner: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 14,
+    background: "rgba(220,38,38,0.08)",
+    border: "1px solid rgba(220,38,38,0.25)",
+    color: "#991b1b",
+    fontWeight: 800,
+    fontSize: 13,
+  },
+
+  modalBackdrop: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.6)",
+    zIndex: 10000,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  modalCard: {
+    background: "white",
+    padding: 24,
+    borderRadius: 18,
+    width: 340,
+    textAlign: "center",
+    boxShadow: "0px 22px 60px rgba(0,0,0,0.20)",
+    border: "1px solid rgba(15,23,42,0.10)",
+  },
+
+  modalActions: {
+    display: "flex",
+    gap: 10,
+  },
+
+  modalPrimary: {
+    flex: 1,
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "none",
+    background: "#2563eb",
+    color: "white",
+    fontWeight: 800,
+    cursor: "pointer",
+  },
+
+  modalSecondary: {
+    flex: 1,
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "1px solid rgba(15,23,42,0.15)",
+    background: "white",
+    fontWeight: 800,
+    cursor: "pointer",
   },
 };

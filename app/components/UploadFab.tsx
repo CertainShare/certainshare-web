@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import UploadFlowModal from "@/app/components/UploadFlowModal";
 import { apiFetch } from "@/lib/api";
+import { deriveBillingFlags, getClientBillingStatus } from "@/lib/billingGate";
 
 type UploadFabProps = {
   defaultFolderId?: string | null;
@@ -16,6 +17,9 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
   const [overLimit, setOverLimit] = useState(false);
   const [overLimitDeadline, setOverLimitDeadline] = useState<string | null>(null);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const billingFlags = deriveBillingFlags(getClientBillingStatus());
+  const uploadsBlocked = billingFlags.blockUploads;
+  const folderBlocked = billingFlags.blockCreateFolder;
 
   const searchParams = useSearchParams();
   const [showUploadHint, setShowUploadHint] = useState(false);
@@ -90,7 +94,7 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
         onClick={() => {
           setShowUploadHint(false);
 
-          if (overLimit) {
+          if (uploadsBlocked || overLimit) {
             setShowBlockedModal(true);
             return;
           }
@@ -99,8 +103,8 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
         }}
         style={{
           ...styles.fab,
-          opacity: overLimit ? 0.5 : 1,
-          cursor: overLimit ? "not-allowed" : "pointer",
+          opacity: uploadsBlocked || overLimit ? 0.5 : 1,
+          cursor: uploadsBlocked || overLimit ? "not-allowed" : "pointer",
         }}
         aria-label="Create"
       >
@@ -110,23 +114,32 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
       {/* Popup menu */}
       {openMenu && (
         <div ref={menuRef} style={styles.menu}>
-          <button
-            style={styles.menuItem}
-            onClick={() => {
-              setFlow("folder");
-              setOpenMenu(false);
-            }}
-          >
+            <button
+              style={{
+                ...styles.menuItem,
+                ...(folderBlocked ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+              }}
+              onClick={() => {
+                if (folderBlocked) return;
+                setFlow("folder");
+                setOpenMenu(false);
+              }}
+            >
             <span style={styles.menuText}>Create Album</span>
           </button>
 
-          <button
-            style={{ ...styles.menuItem, borderBottom: "none" }}
-            onClick={() => {
-              setFlow("media");
-              setOpenMenu(false);
-            }}
-          >
+            <button
+              style={{
+                ...styles.menuItem,
+                borderBottom: "none",
+                ...(uploadsBlocked ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+              }}
+              onClick={() => {
+                if (uploadsBlocked) return;
+                setFlow("media");
+                setOpenMenu(false);
+              }}
+            >
             <span style={styles.menuText}>Upload Media</span>
           </button>
         </div>
@@ -152,12 +165,14 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
       <h3 style={{ marginTop: 0 }}>Uploads Disabled</h3>
 
       <p style={{ fontSize: 14 }}>
-        You are currently in Over-Limit Mode.
+        {billingFlags.isFrozen && "Your account is frozen. Uploads and album creation are disabled."}
+        {billingFlags.isGrace && "You are in a grace period. Uploads are disabled until billing is fixed."}
+        {billingFlags.overLimit && "You are currently in Over-Limit Mode."}
+
         {overLimitDeadline && (
           <>
             <br />
-            Reduce storage or upgrade before{" "}
-            {new Date(overLimitDeadline).toLocaleDateString()}.
+            Resolve before {new Date(overLimitDeadline).toLocaleDateString()}.
           </>
         )}
       </p>

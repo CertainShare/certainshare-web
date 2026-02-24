@@ -5,6 +5,7 @@ import { apiFetch } from "../../../lib/api";
 import TopNav from "../../components/TopNav";
 import UploadFab from "../../components/UploadFab";
 import { useRouter } from "next/navigation";
+import { deriveBillingFlags, getClientBillingStatus } from "../../../lib/billingGate";
 
 type ProfileUser = {
   id: string;
@@ -24,6 +25,8 @@ export default function ProfilePage({
   const id = resolvedParams.id;
 
   const router = useRouter();
+  const billingFlags = deriveBillingFlags(getClientBillingStatus());
+  const isFrozen = billingFlags.isFrozen;
 
   const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [uploads, setUploads] = useState<any[]>([]);
@@ -176,6 +179,12 @@ async function unblockUser() {
 
     if (!token) {
       window.location.href = "/login";
+      return;
+    }
+
+    // Frozen users cannot view other profiles
+    if (isFrozen) {
+      router.replace("/friends");
       return;
     }
 

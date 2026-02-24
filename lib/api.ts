@@ -2,6 +2,8 @@
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+import { setClientBillingStatus } from "./billingGate";
+
 if (!BASE_URL) {
   throw new Error("Missing NEXT_PUBLIC_API_BASE_URL in .env.local");
 }
@@ -41,11 +43,21 @@ export async function apiFetch(
       localStorage.removeItem("token");
       window.location.href = "/login";
       return;
+    }
+
+    const message = data?.error || data?.message || "Request failed";
+    throw new Error(message);
   }
 
-  const message = data?.error || data?.message || "Request failed";
-  throw new Error(message);
-}
+  // ✅ Store billing status if backend included it
+  if (typeof window !== "undefined" && data) {
+    const hasAccountState = data.account_state !== undefined;
+    const hasOverLimit = data.over_limit !== undefined;
+
+    if (hasAccountState || hasOverLimit) {
+      setClientBillingStatus(data);
+    }
+  }
 
   return data;
 }

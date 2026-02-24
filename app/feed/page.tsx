@@ -6,9 +6,12 @@ import TopNav from "../components/TopNav";
 import Link from "next/link";
 import UploadFab from "../components/UploadFab";
 import { useRouter } from "next/navigation";
+import { deriveBillingFlags, getClientBillingStatus } from "../../lib/billingGate";
 
 export default function FeedPage() {
   const router = useRouter();
+  const billingFlags = deriveBillingFlags(getClientBillingStatus());
+  const isFrozen = billingFlags.isFrozen;
   const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -26,27 +29,34 @@ export default function FeedPage() {
     return res;
   }
 
-  async function loadFeed() {
-    setLoading(true);
-    setError("");
+async function loadFeed() {
+  setLoading(true);
+  setError("");
 
-    try {
+  try {
       const res = await apiFetch("/feed");
-      const loadedFeed = res.feed || [];
-      setFeed(loadedFeed);
+      let loadedFeed = res.feed || [];
 
-      // initialize slideshow indexes
-      const newMap: Record<string, number> = {};
-      loadedFeed.forEach((item: any) => {
-        newMap[item.id] = 0;
-      });
-      setSlideIndexMap(newMap);
-    } catch (err: any) {
-      setError(err.message || "Failed to load feed");
-    } finally {
-      setLoading(false);
-    }
+      // Frozen users cannot see shared-only content
+      if (isFrozen) {
+        loadedFeed = loadedFeed.filter(
+          (item: any) => item.visibility !== "shared"
+        );
+      }
+
+    setFeed(loadedFeed);
+
+    const newMap: Record<string, number> = {};
+    loadedFeed.forEach((item: any) => {
+      newMap[item.id] = 0;
+    });
+    setSlideIndexMap(newMap);
+  } catch (err: any) {
+    setError(err.message || "Failed to load feed");
+  } finally {
+    setLoading(false);
   }
+}
 
   function nextSlide(itemId: string, total: number) {
     setSlideIndexMap((prev) => {
