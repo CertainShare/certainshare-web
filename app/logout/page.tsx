@@ -8,6 +8,7 @@ export default function LogoutPage() {
 
   useEffect(() => {
     localStorage.removeItem("token");
+    localStorage.removeItem("billing_status");
     router.push("/login");
   }, [router]);
 

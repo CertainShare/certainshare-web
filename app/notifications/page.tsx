@@ -11,11 +11,15 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const router = useRouter();
-  const billingFlags = deriveBillingFlags(getClientBillingStatus());
-  const isFrozen = billingFlags.isFrozen;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isFrozen, setIsFrozen] = useState<boolean | null>(null);
+
+useEffect(() => {
+  const flags = deriveBillingFlags(getClientBillingStatus());
+  setIsFrozen(flags.isFrozen);
+}, []);
 
   const [showFrozenModal, setShowFrozenModal] = useState(false);
 
@@ -94,23 +98,20 @@ export default function NotificationsPage() {
     }
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+    useEffect(() => {
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
 
-    if (isFrozen) {
-      setLoading(false);
-      setNotifications([]);
-      setUnreadCount(0);
-      return;
-    }
+      loadAll();
+    }, []);
 
-    loadAll();
-  }, []);
+    if (isFrozen === null) {
+  return null;
+}
 
   return (
     <main style={styles.page}>
@@ -118,13 +119,6 @@ export default function NotificationsPage() {
 
       <div style={styles.container}>
         <div style={styles.headerRow}>
-          {isFrozen && (
-            <div style={styles.frozenBanner}>
-              Account frozen — notification actions are disabled. Manage billing
-              to restore access.
-            </div>
-          )}
-
           <div>
             <h1 style={styles.title}>Notifications</h1>
             <div style={styles.subtitle}>
@@ -134,13 +128,9 @@ export default function NotificationsPage() {
 
           <div style={styles.headerActions}>
             <span style={styles.unreadBadge}>{unreadCount} unread</span>
-
             <button
               disabled={isFrozen}
-              onClick={() => {
-                if (isFrozen) return;
-                markAllRead();
-              }}
+              onClick={markAllRead}
               style={{
                 ...styles.button,
                 ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
@@ -150,6 +140,11 @@ export default function NotificationsPage() {
             </button>
           </div>
         </div>
+        {isFrozen && (
+          <div style={styles.frozenBanner}>
+            Account frozen — notification actions are disabled. Manage billing to restore access.
+          </div>
+        )}
 
         {loading && <p style={styles.statusText}>Loading...</p>}
         {error && <p style={styles.errorText}>{error}</p>}
@@ -484,8 +479,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   frozenBanner: {
-    marginTop: 10,
-    padding: 12,
+    marginBottom: 16,
+    padding: "12px 14px",
     borderRadius: 14,
     background: "rgba(220,38,38,0.08)",
     border: "1px solid rgba(220,38,38,0.25)",

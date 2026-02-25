@@ -17,15 +17,18 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
   const [overLimit, setOverLimit] = useState(false);
   const [overLimitDeadline, setOverLimitDeadline] = useState<string | null>(null);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
-  const billingFlags = deriveBillingFlags(getClientBillingStatus());
-  const uploadsBlocked = billingFlags.blockUploads;
-  const folderBlocked = billingFlags.blockCreateFolder;
+  const [billingFlags, setBillingFlags] = useState<any | null>(null);
 
   const searchParams = useSearchParams();
   const [showUploadHint, setShowUploadHint] = useState(false);
 
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+  const flags = deriveBillingFlags(getClientBillingStatus());
+  setBillingFlags(flags);
+}, []);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -81,6 +84,13 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
 
   loadStorage();
 }, []);
+
+if (!billingFlags) {
+  return null;
+}
+
+const uploadsBlocked = billingFlags.blockUploads;
+const folderBlocked = billingFlags.blockCreateFolder;
 
   return (
     <>
@@ -167,7 +177,7 @@ export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
       <p style={{ fontSize: 14 }}>
         {billingFlags.isFrozen && "Your account is frozen. Uploads and album creation are disabled."}
         {billingFlags.isGrace && "You are in a grace period. Uploads are disabled until billing is fixed."}
-        {billingFlags.overLimit && "You are currently in Over-Limit Mode."}
+        {overLimit && "You are currently in Over-Limit Mode."}
 
         {overLimitDeadline && (
           <>

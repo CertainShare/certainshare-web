@@ -21,6 +21,14 @@ export default function AlbumPage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Select mode
+const [selectMode, setSelectMode] = useState(false);
+const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+// Delete modal
+const [showDeleteModal, setShowDeleteModal] = useState(false);
+const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
+
   // billing status (needed for delete confirmation message)
   const [isPaid, setIsPaid] = useState(false);
 
@@ -44,27 +52,6 @@ export default function AlbumPage({
       setError(err.message || "Failed to load album");
     } finally {
       setLoading(false);
-    }
-  }
-
-  // delete media inside album
-  async function deleteMedia(mediaId: string) {
-    const ok = confirm(
-      isPaid
-        ? "Delete media? This will move it to Trash."
-        : "Delete media? This will permanently delete it."
-    );
-
-    if (!ok) return;
-
-    try {
-      await apiFetch(`/media/${mediaId}`, { method: "DELETE" });
-
-      if (folderId) {
-        await loadAlbumMedia(folderId);
-      }
-    } catch (err: any) {
-      alert(err.message);
     }
   }
 
@@ -92,6 +79,42 @@ export default function AlbumPage({
     loadAlbumMedia(folderId);
   }, [folderId]);
 
+  useEffect(() => {
+  setSelectMode(false);
+  setSelectedIds([]);
+}, [folderId]);
+
+  function toggleSelected(id: string) {
+  setSelectedIds((prev) =>
+    prev.includes(id)
+      ? prev.filter((x) => x !== id)
+      : [...prev, id]
+  );
+}
+
+async function handleConfirmDelete() {
+  if (deleteTargetIds.length === 0) return;
+
+  try {
+    await Promise.all(
+      deleteTargetIds.map((id) =>
+        apiFetch(`/media/${id}`, { method: "DELETE" })
+      )
+    );
+
+    setShowDeleteModal(false);
+    setDeleteTargetIds([]);
+    setSelectedIds([]);
+    setSelectMode(false);
+
+    if (folderId) {
+      await loadAlbumMedia(folderId);
+    }
+  } catch (err: any) {
+    alert(err.message || "Delete failed.");
+  }
+}
+
   return (
     <main style={styles.page}>
       <div style={styles.container}>
@@ -110,11 +133,28 @@ export default function AlbumPage({
               ← Back
             </button>
 
-            <Link href="/logout" style={styles.logoutButton}>
-              Logout
-            </Link>
+            {!selectMode && items.length > 0 && (
+              <button
+                onClick={() => setSelectMode(true)}
+                style={styles.headerButton}
+              >
+                Select
+              </button>
+            )}
+
+            {selectMode && (
+              <button
+                onClick={() => {
+                  setSelectMode(false);
+                  setSelectedIds([]);
+                }}
+                style={styles.headerButton}
+              >
+                Cancel
+              </button>
+            )}
           </div>
-        </div>
+          </div>
 
         {/* LOADING */}
         {loading && <div style={styles.statusText}>Loading...</div>}
@@ -142,17 +182,33 @@ export default function AlbumPage({
 
             <div style={styles.grid}>
               {items.map((item) => (
-                <div key={item.id} style={styles.tileWrap}>
-                  <Link href={`/media/${item.id}`} style={styles.tile}>
+                <div
+                  key={item.id}
+                  style={{
+                    ...styles.tileWrap,
+                    ...(selectedIds.includes(item.id)
+                      ? styles.tileSelected
+                      : {}),
+                  }}
+                  onClick={() => {
+                    if (selectMode) toggleSelected(item.id);
+                  }}
+                >
+                  <Link
+                    href={`/media/${item.id}`}
+                    style={styles.tile}
+                    onClick={(e) => {
+                      if (selectMode) e.preventDefault();
+                    }}
+                  >
                     <img src={item.url} alt="media" style={styles.tileImg} />
                   </Link>
 
-                  <button
-                    onClick={() => deleteMedia(item.id)}
-                    style={styles.deleteOverlay}
-                  >
-                    Delete
-                  </button>
+                  {selectMode && (
+                    <div style={styles.checkCircle}>
+                      {selectedIds.includes(item.id) ? "✓" : ""}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -160,8 +216,79 @@ export default function AlbumPage({
         )}
       </div>
 
+      {selectMode && (
+        <div style={styles.bulkBar}>
+          <button
+            disabled={selectedIds.length === 0}
+            style={{
+              ...styles.bulkDeleteButton,
+              ...(selectedIds.length === 0
+                ? styles.bulkDeleteDisabled
+                : {}),
+            }}
+            onClick={() => {
+              if (selectedIds.length === 0) return;
+              setDeleteTargetIds(selectedIds);
+              setShowDeleteModal(true);
+            }}
+          >
+            Delete
+          </button>
+
+          <div style={styles.bulkText}>
+            {selectedIds.length} selected
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modalCard}>
+      <div style={styles.modalTitle}>Delete Confirmation</div>
+
+      <div style={styles.modalSubtitle}>
+        {isPaid ? (
+          <>
+            This will move the selected item(s) to Trash.
+            They can be restored within 30 days.
+          </>
+        ) : (
+          <>
+            This will permanently delete the selected item(s).
+            This cannot be undone.
+          </>
+        )}
+      </div>
+
+      <div style={{ marginTop: 18, display: "flex", gap: 10 }}>
+        <button
+          onClick={() => {
+            setShowDeleteModal(false);
+            setDeleteTargetIds([]);
+          }}
+          style={styles.modalSecondaryButton}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleConfirmDelete}
+          style={{
+            ...styles.modalButton,
+            background: "#dc2626",
+            boxShadow: "none",
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       {/* FLOATING UPLOAD BUTTON */}
-      {folderId && <UploadFab defaultFolderId={folderId} />}
+      {folderId && !selectMode && (
+  <UploadFab defaultFolderId={folderId} />
+)}
     </main>
   );
 }
@@ -337,18 +464,63 @@ const styles: Record<string, React.CSSProperties> = {
     display: "block",
   },
 
-  deleteOverlay: {
-    position: "absolute",
-    bottom: 10,
-    left: 10,
-    right: 10,
-    padding: "8px 10px",
-    borderRadius: 12,
-    cursor: "pointer",
-    border: "1px solid rgba(220,38,38,0.25)",
-    background: "rgba(220,38,38,0.85)",
-    color: "white",
-    fontWeight: 900,
-    fontSize: 13,
-  },
+  tileSelected: {
+  outline: "3px solid rgba(37,99,235,0.65)",
+  outlineOffset: 0,
+},
+
+checkCircle: {
+  position: "absolute",
+  top: 10,
+  right: 10,
+  width: 28,
+  height: 28,
+  borderRadius: 999,
+  background: "rgba(15,23,42,0.75)",
+  color: "white",
+  fontWeight: 950,
+  fontSize: 16,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "2px solid rgba(255,255,255,0.65)",
+},
+
+bulkBar: {
+  position: "fixed",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  padding: 14,
+  background: "white",
+  borderTop: "1px solid rgba(15,23,42,0.10)",
+  display: "flex",
+  justifyContent: "flex-start",
+  alignItems: "center",
+  gap: 14,
+  zIndex: 9999,
+  boxShadow: "0px -10px 30px rgba(0,0,0,0.10)",
+},
+
+bulkText: {
+  fontWeight: 900,
+  color: "var(--text)",
+  fontSize: 14,
+},
+
+bulkDeleteButton: {
+  padding: "10px 16px",
+  borderRadius: 12,
+  cursor: "pointer",
+  border: "1px solid rgba(220,38,38,0.25)",
+  background: "rgba(220,38,38,0.10)",
+  color: "#dc2626",
+  fontWeight: 950,
+  fontSize: 13,
+},
+
+bulkDeleteDisabled: {
+  opacity: 0.5,
+  cursor: "not-allowed",
+},
 };

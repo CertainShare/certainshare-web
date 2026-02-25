@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Bell, Users, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
+import { setClientBillingStatus } from "../../lib/billingGate";
 
 export default function TopNav() {
   const pathname = usePathname();
@@ -25,8 +26,18 @@ export default function TopNav() {
     }
   }
 
+  async function refreshBillingStatus() {
+  try {
+    const res = await apiFetch("/billing/status");
+    setClientBillingStatus(res);
+  } catch {
+    // fail silently
+  }
+}
+
   useEffect(() => {
     loadUnreadCount();
+    refreshBillingStatus();
 
     // Poll every 15 seconds
     const interval = setInterval(() => {

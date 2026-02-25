@@ -14,6 +14,10 @@ export default function TrashPage() {
   const [items, setItems] = useState<TrashItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+    // Select mode
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   async function loadTrash() {
     setLoading(true);
@@ -29,26 +33,49 @@ export default function TrashPage() {
     }
   }
 
-  async function restoreItem(mediaId: string) {
-    try {
-      await apiFetch(`/media/${mediaId}/restore`, { method: "POST" });
-      await loadTrash();
-    } catch (err: any) {
-      alert(err.message);
-    }
-  }
+  function toggleSelected(id: string) {
+  setSelectedIds((prev) =>
+    prev.includes(id)
+      ? prev.filter((x) => x !== id)
+      : [...prev, id]
+  );
+}
 
-  async function deletePermanent(mediaId: string) {
-    const ok = confirm("Permanently delete this media? This cannot be undone.");
-    if (!ok) return;
+async function handleBulkRestore() {
+  if (selectedIds.length === 0) return;
 
-    try {
-      await apiFetch(`/media/${mediaId}/permanent`, { method: "DELETE" });
-      await loadTrash();
-    } catch (err: any) {
-      alert(err.message);
+  try {
+    for (const id of selectedIds) {
+      await apiFetch(`/media/${id}/restore`, { method: "POST" });
     }
+
+    setSelectedIds([]);
+    setSelectMode(false);
+    await loadTrash();
+  } catch (err: any) {
+    alert(err.message || "Restore failed.");
   }
+}
+
+async function handleBulkDeletePermanent() {
+  if (selectedIds.length === 0) return;
+  setShowDeleteModal(true);
+}
+
+async function confirmPermanentDelete() {
+  try {
+    for (const id of selectedIds) {
+      await apiFetch(`/media/${id}/permanent`, { method: "DELETE" });
+    }
+
+    setShowDeleteModal(false);
+    setSelectedIds([]);
+    setSelectMode(false);
+    await loadTrash();
+  } catch (err: any) {
+    alert(err.message || "Delete failed.");
+  }
+}
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -75,7 +102,26 @@ export default function TrashPage() {
             <Link href="/mymedia" style={styles.backButton}>
               ← Back
             </Link>
+              {!selectMode && items.length > 0 && (
+                <button
+                  onClick={() => setSelectMode(true)}
+                  style={styles.backButton}
+                >
+                  Select
+                </button>
+              )}
 
+              {selectMode && (
+                <button
+                  onClick={() => {
+                    setSelectMode(false);
+                    setSelectedIds([]);
+                  }}
+                  style={styles.backButton}
+                >
+                  Cancel
+                </button>
+              )}
             <Link href="/logout" style={styles.logoutButton}>
               Logout
             </Link>
@@ -101,38 +147,106 @@ export default function TrashPage() {
         {!loading && !error && items.length > 0 && (
           <div style={styles.grid}>
             {items.map((item) => (
-              <div key={item.id} style={styles.card}>
-                <div style={styles.imageBox}>
-                  <img src={item.url} alt="trash" style={styles.image} />
+              <div
+                  key={item.id}
+                  onClick={() => {
+                    if (selectMode) {
+                      toggleSelected(item.id);
+                    }
+                  }}
+                  style={{
+                    ...styles.card,
+                    ...(selectedIds.includes(item.id) ? styles.tileSelected : {}),
+                    cursor: selectMode ? "pointer" : "default",
+                  }}
+                >
+                  <div style={styles.imageBox}>
+                    <img src={item.url} alt="trash" style={styles.image} />
 
-                  <div style={styles.deletedBadge}>
-                    Deleted{" "}
-                    {item.deleted_at
-                      ? new Date(item.deleted_at).toLocaleDateString()
-                      : ""}
+                    <div style={styles.deletedBadge}>
+                      Deleted{" "}
+                      {item.deleted_at
+                        ? new Date(item.deleted_at).toLocaleDateString()
+                        : ""}
+                    </div>
+
+                    {selectMode && (
+                      <div style={styles.checkCircle}>
+                        {selectedIds.includes(item.id) ? "✓" : ""}
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                <div style={styles.cardActions}>
-                  <button
-                    onClick={() => restoreItem(item.id)}
-                    style={styles.restoreButton}
-                  >
-                    Restore
-                  </button>
-
-                  <button
-                    onClick={() => deletePermanent(item.id)}
-                    style={styles.deleteButton}
-                  >
-                    Delete forever
-                  </button>
-                </div>
-              </div>
             ))}
           </div>
         )}
       </div>
+      {selectMode && (
+  <div style={styles.bulkBar}>
+    <button
+      disabled={selectedIds.length === 0}
+      style={{
+        ...styles.bulkRestoreButton,
+        ...(selectedIds.length === 0 ? styles.bulkDisabled : {}),
+      }}
+      onClick={handleBulkRestore}
+    >
+      Restore
+    </button>
+
+    <button
+      disabled={selectedIds.length === 0}
+      style={{
+        ...styles.bulkDeleteButton,
+        ...(selectedIds.length === 0 ? styles.bulkDisabled : {}),
+      }}
+      onClick={handleBulkDeletePermanent}
+    >
+      Delete Forever
+    </button>
+
+    <div style={styles.bulkText}>
+      {selectedIds.length} selected
+    </div>
+  </div>
+)}
+
+{showDeleteModal && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modalCard}>
+      <div style={styles.modalTitle}>
+        Permanently delete media?
+      </div>
+
+      <div style={styles.modalBody}>
+        This action cannot be undone.
+        <br /><br />
+        The selected media will be permanently removed and will no longer
+        be recoverable.
+        <br /><br />
+        It may remain in encrypted system backups for a limited time
+        for compliance, fraud prevention, or legal requirements,
+        but it will not be accessible to you or any other user.
+      </div>
+
+      <div style={styles.modalActions}>
+        <button
+          onClick={() => setShowDeleteModal(false)}
+          style={styles.modalCancel}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={confirmPermanentDelete}
+          style={styles.modalDelete}
+        >
+          Permanently Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </main>
   );
 }
@@ -301,34 +415,129 @@ const styles: Record<string, React.CSSProperties> = {
     backdropFilter: "blur(8px)",
   },
 
-  cardActions: {
-    padding: 12,
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-  },
+  tileSelected: {
+  outline: "3px solid rgba(37,99,235,0.65)",
+  outlineOffset: 0,
+},
 
-  restoreButton: {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 14,
-    cursor: "pointer",
-    border: "1px solid rgba(37,99,235,0.25)",
-    background: "rgba(37,99,235,0.08)",
-    color: "#1d4ed8",
-    fontWeight: 950,
-    fontSize: 13,
-  },
+checkCircle: {
+  position: "absolute",
+  top: 10,
+  right: 10,
+  width: 28,
+  height: 28,
+  borderRadius: 999,
+  background: "rgba(15,23,42,0.75)",
+  color: "white",
+  fontWeight: 950,
+  fontSize: 16,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "2px solid rgba(255,255,255,0.65)",
+},
 
-  deleteButton: {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 14,
-    cursor: "pointer",
-    border: "1px solid rgba(220,38,38,0.25)",
-    background: "rgba(220,38,38,0.08)",
-    color: "#dc2626",
-    fontWeight: 950,
-    fontSize: 13,
-  },
+bulkBar: {
+  position: "fixed",
+  left: 0,
+  right: 0,
+  bottom: 0,
+  padding: 14,
+  background: "white",
+  borderTop: "1px solid rgba(15,23,42,0.10)",
+  display: "flex",
+  gap: 12,
+  alignItems: "center",
+  zIndex: 9999,
+  boxShadow: "0px -10px 30px rgba(0,0,0,0.10)",
+},
+
+bulkText: {
+  fontWeight: 900,
+  fontSize: 14,
+  color: "var(--text)",
+},
+
+bulkRestoreButton: {
+  padding: "10px 16px",
+  borderRadius: 12,
+  cursor: "pointer",
+  border: "1px solid rgba(37,99,235,0.25)",
+  background: "rgba(37,99,235,0.10)",
+  color: "#1d4ed8",
+  fontWeight: 950,
+  fontSize: 13,
+},
+
+bulkDeleteButton: {
+  padding: "10px 16px",
+  borderRadius: 12,
+  cursor: "pointer",
+  border: "1px solid rgba(220,38,38,0.25)",
+  background: "rgba(220,38,38,0.10)",
+  color: "#dc2626",
+  fontWeight: 950,
+  fontSize: 13,
+},
+
+bulkDisabled: {
+  opacity: 0.5,
+  cursor: "not-allowed",
+},
+
+modalOverlay: {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.45)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 10000,
+},
+
+modalCard: {
+  width: 420,
+  background: "white",
+  borderRadius: 18,
+  padding: 24,
+  boxShadow: "0px 30px 60px rgba(0,0,0,0.25)",
+},
+
+modalTitle: {
+  fontSize: 18,
+  fontWeight: 950,
+  marginBottom: 14,
+},
+
+modalBody: {
+  fontSize: 14,
+  lineHeight: "20px",
+  color: "var(--text)",
+},
+
+modalActions: {
+  marginTop: 24,
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 12,
+},
+
+modalCancel: {
+  padding: "10px 16px",
+  borderRadius: 12,
+  border: "1px solid rgba(15,23,42,0.10)",
+  background: "white",
+  fontWeight: 800,
+  cursor: "pointer",
+},
+
+modalDelete: {
+  padding: "10px 16px",
+  borderRadius: 12,
+  border: "1px solid rgba(220,38,38,0.25)",
+  background: "#dc2626",
+  color: "white",
+  fontWeight: 900,
+  cursor: "pointer",
+},
 };

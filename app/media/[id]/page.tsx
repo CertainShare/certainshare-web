@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { apiFetch } from "../../../lib/api";
 
 type UploadItem = {
@@ -16,25 +15,25 @@ export default function MediaPage({
   params: Promise<{ id: string }>;
 }) {
   const [mediaId, setMediaId] = useState<string | null>(null);
-
   const [item, setItem] = useState<UploadItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadMediaFromList(mediaId: string) {
+  async function loadMedia(id: string) {
     setLoading(true);
     setError("");
 
     try {
-      const res = await apiFetch("/media/my");
+      const res = await apiFetch(`/media/${id}`);
 
-      const found = (res || []).find((x: any) => x.id === mediaId);
-
-      if (!found) {
+      if (!res?.media) {
         throw new Error("Media not found");
       }
 
-      setItem(found);
+      setItem({
+        ...res.media,
+        url: res.media.url || res.media.object_key,
+      });
     } catch (err: any) {
       setError(err.message || "Failed to load media");
     } finally {
@@ -42,96 +41,96 @@ export default function MediaPage({
     }
   }
 
-useEffect(() => {
-  async function init() {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-      return;
+  useEffect(() => {
+    async function init() {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const resolvedParams = await params;
+      setMediaId(resolvedParams.id);
     }
 
-    const resolvedParams = await params;
-    setMediaId(resolvedParams.id);
-  }
+    init();
+  }, [params]);
 
-  init();
-}, [params]);
+  useEffect(() => {
+    if (!mediaId) return;
+    loadMedia(mediaId);
+  }, [mediaId]);
 
-useEffect(() => {
-  if (!mediaId) return;
-  loadMediaFromList(mediaId);
-}, [mediaId]);
+  return (
+    <main style={styles.page}>
+      <div style={styles.container}>
+        {/* HEADER */}
+        <div style={styles.headerRow}>
+          <div>
+            <h1 style={styles.title}>Media Viewer</h1>
+            <div style={styles.subtitle}>
+              Private, secure storage — only shared intentionally.
+            </div>
+          </div>
 
-return (
-  <main style={styles.page}>
-    <div style={styles.container}>
-      {/* HEADER */}
-      <div style={styles.headerRow}>
-        <div>
-          <h1 style={styles.title}>Media Viewer</h1>
-          <div style={styles.subtitle}>
-            Private, secure storage — only shared intentionally.
+          <div style={styles.headerActions}>
+            <button
+              onClick={() => window.history.back()}
+              style={styles.backButton}
+            >
+              ← Back
+            </button>
           </div>
         </div>
 
-        <div style={styles.headerActions}>
-          <button
-            onClick={() => window.history.back()}
-            style={styles.backButton}
-          >
-            ← Back
-          </button>
+        {/* LOADING */}
+        {loading && <div style={styles.statusText}>Loading...</div>}
 
-          <Link href="/logout" style={styles.logoutButton}>
-            Logout
-          </Link>
-        </div>
+        {/* ERROR */}
+        {error && <div style={styles.errorBox}>{error}</div>}
+
+        {/* MEDIA VIEW */}
+        {!loading && !error && item && (
+          <div style={styles.viewerCard}>
+            {/* MEDIA */}
+            <div style={styles.viewerTop}>
+              <div style={styles.imageStage}>
+                <img src={item.url} alt="media" style={styles.image} />
+              </div>
+            </div>
+
+            {/* DETAILS */}
+            <div style={styles.viewerBottom}>
+              <div style={styles.detailsRow}>
+                <div style={styles.detailsLeft}>
+                  <div style={styles.detailLabel}>Visibility</div>
+                  <div style={styles.detailValue}>
+                    <span style={styles.visibilityBadge}>
+                      {item.visibility}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={styles.detailsRight}>
+                  <div style={styles.detailLabel}>Status</div>
+                  <div style={styles.detailValue}>
+                    <span style={styles.statusBadge}>
+                      Stored securely
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.noteBox}>
+                This file is stored inside your CertainShare library.
+                You can change visibility from the upload settings later.
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* LOADING */}
-      {loading && <div style={styles.statusText}>Loading...</div>}
-
-      {/* ERROR */}
-      {error && <div style={styles.errorBox}>{error}</div>}
-
-      {/* MEDIA VIEW */}
-      {!loading && !error && item && (
-        <div style={styles.viewerCard}>
-          {/* MEDIA */}
-          <div style={styles.viewerTop}>
-            <div style={styles.imageStage}>
-              <img src={item.url} alt="media" style={styles.image} />
-            </div>
-          </div>
-
-          {/* DETAILS */}
-          <div style={styles.viewerBottom}>
-            <div style={styles.detailsRow}>
-              <div style={styles.detailsLeft}>
-                <div style={styles.detailLabel}>Visibility</div>
-                <div style={styles.detailValue}>
-                  <span style={styles.visibilityBadge}>{item.visibility}</span>
-                </div>
-              </div>
-
-              <div style={styles.detailsRight}>
-                <div style={styles.detailLabel}>Status</div>
-                <div style={styles.detailValue}>
-                  <span style={styles.statusBadge}>Stored securely</span>
-                </div>
-              </div>
-            </div>
-
-            <div style={styles.noteBox}>
-              This file is stored inside your CertainShare library. You can
-              change visibility from the upload settings later.
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  </main>
-);
+    </main>
+  );
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -181,7 +180,6 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   backButton: {
-    textDecoration: "none",
     background: "white",
     border: "1px solid rgba(15,23,42,0.10)",
     padding: "10px 14px",
@@ -190,18 +188,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     color: "var(--text)",
     boxShadow: "var(--shadow-sm)",
-  },
-
-  logoutButton: {
-    textDecoration: "none",
-    background: "rgba(220,38,38,0.06)",
-    border: "1px solid rgba(220,38,38,0.18)",
-    padding: "10px 14px",
-    borderRadius: 12,
-    fontWeight: 950,
-    fontSize: 13,
-    color: "#dc2626",
-    boxShadow: "var(--shadow-sm)",
+    cursor: "pointer",
   },
 
   statusText: {
@@ -230,7 +217,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   viewerTop: {
-    background: "linear-gradient(180deg, rgba(15,23,42,0.04), rgba(15,23,42,0.02))",
+    background:
+      "linear-gradient(180deg, rgba(15,23,42,0.04), rgba(15,23,42,0.02))",
     padding: 14,
   },
 

@@ -21,8 +21,12 @@ export default function FriendsPage() {
   // NEW: search
   const [search, setSearch] = useState("");
 
-  const billingFlags = deriveBillingFlags(getClientBillingStatus());
-  const isFrozen = billingFlags.isFrozen;
+  const [isFrozen, setIsFrozen] = useState(false);
+
+  useEffect(() => {
+    const flags = deriveBillingFlags(getClientBillingStatus());
+    setIsFrozen(flags.isFrozen);
+  }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -134,18 +138,6 @@ export default function FriendsPage() {
       return;
     }
 
-    const billingFlags = deriveBillingFlags(getClientBillingStatus());
-    const frozen = billingFlags.isFrozen;
-
-    if (frozen) {
-      setLoading(false);
-      setError("");
-      setFriends([]);
-      setIncoming([]);
-      setOutgoing([]);
-      return;
-    }
-
     loadAll();
   }, []);
 
@@ -190,11 +182,11 @@ export default function FriendsPage() {
           </div>
         </div>
 
-        {isFrozen && (
-          <div style={styles.frozenBanner}>
-            Account frozen — friend actions are disabled. Manage billing to restore access.
-          </div>
-        )}
+          {isFrozen && (
+            <div style={styles.frozenBanner}>
+              Account frozen — friend actions are disabled. Manage billing to restore access.
+            </div>
+          )}
 
         {/* SEARCH BAR */}
         <div style={styles.searchWrap}>
@@ -687,4 +679,15 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(37,99,235,0.40)",
     zIndex: 9999,
   },
+
+  frozenBanner: {
+  marginBottom: 16,
+  padding: "12px 14px",
+  borderRadius: 14,
+  background: "rgba(220,38,38,0.08)",
+  border: "1px solid rgba(220,38,38,0.25)",
+  color: "#991b1b",
+  fontWeight: 800,
+  fontSize: 13,
+},
 };

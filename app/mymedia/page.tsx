@@ -62,6 +62,14 @@ const [carouselError, setCarouselError] = useState("");
   const [selectModeAlbums, setSelectModeAlbums] = useState(false);
   const [selectedAlbumIds, setSelectedAlbumIds] = useState<string[]>([]);
   const selectedAlbumCount = selectedAlbumIds.length;
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<
+    | { type: "single-upload"; id: string }
+    | { type: "single-album"; id: string }
+    | { type: "bulk-uploads" }
+    | { type: "bulk-albums" }
+    | null
+  >(null);
 
   async function loadMe() {
     const res = await apiFetch("/users/me");
@@ -267,91 +275,70 @@ if (!res?.profileCompleted) {
     }
   }
 
-  async function deleteAlbum(folderId: string) {
-    const ok = confirm(
-      isPaid
-        ? "Delete folder? This will move media into Trash."
-        : "Delete folder? This will permanently delete all media inside it."
-    );
+  function deleteAlbum(folderId: string) {
+  setDeleteTarget({ type: "single-album", id: folderId });
+  setShowDeleteModal(true);
+}
 
-    if (!ok) return;
+function deleteUpload(mediaId: string) {
+  setDeleteTarget({ type: "single-upload", id: mediaId });
+  setShowDeleteModal(true);
+}
 
-    try {
-      await apiFetch(`/folders/${folderId}`, { method: "DELETE" });
-      await refreshAll();
-    } catch (err: any) {
-      alert(err.message);
+function deleteSelectedUploads() {
+  if (selectedUploadIds.length === 0) return;
+
+  setDeleteTarget({ type: "bulk-uploads" });
+  setShowDeleteModal(true);
+}
+
+function deleteSelectedAlbums() {
+  if (selectedAlbumIds.length === 0) return;
+
+  setDeleteTarget({ type: "bulk-albums" });
+  setShowDeleteModal(true);
+}
+
+async function handleConfirmDelete() {
+  if (!deleteTarget) return;
+
+  try {
+    // SINGLE UPLOAD
+    if (deleteTarget.type === "single-upload") {
+      await apiFetch(`/media/${deleteTarget.id}`, { method: "DELETE" });
     }
-  }
 
-  async function deleteUpload(mediaId: string) {
-    const ok = confirm(
-      isPaid
-        ? "Delete media? This will move it to Trash."
-        : "Delete media? This will permanently delete it."
-    );
-
-    if (!ok) return;
-
-    try {
-      await apiFetch(`/media/${mediaId}`, { method: "DELETE" });
-      await refreshAll();
-    } catch (err: any) {
-      alert(err.message);
+    // SINGLE ALBUM
+    if (deleteTarget.type === "single-album") {
+      await apiFetch(`/folders/${deleteTarget.id}`, { method: "DELETE" });
     }
-  }
 
-  // NEW: bulk delete uploads
-  async function deleteSelectedUploads() {
-    if (selectedUploadIds.length === 0) return;
-
-    const ok = confirm(
-      isPaid
-        ? `Delete ${selectedUploadIds.length} item(s)? This will move them to Trash.`
-        : `Delete ${selectedUploadIds.length} item(s)? This will permanently delete them.`
-    );
-
-    if (!ok) return;
-
-    try {
+    // BULK UPLOADS
+    if (deleteTarget.type === "bulk-uploads") {
       for (const id of selectedUploadIds) {
         await apiFetch(`/media/${id}`, { method: "DELETE" });
       }
-
       setSelectedUploadIds([]);
       setSelectMode(false);
-
-      await refreshAll();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete selected uploads.");
     }
-  }
 
-  // NEW: bulk delete albums
-  async function deleteSelectedAlbums() {
-    if (selectedAlbumIds.length === 0) return;
-
-    const ok = confirm(
-      isPaid
-        ? `Delete ${selectedAlbumIds.length} album(s)? This will move media into Trash.`
-        : `Delete ${selectedAlbumIds.length} album(s)? This will permanently delete all media inside them.`
-    );
-
-    if (!ok) return;
-
-    try {
+    // BULK ALBUMS
+    if (deleteTarget.type === "bulk-albums") {
       for (const id of selectedAlbumIds) {
         await apiFetch(`/folders/${id}`, { method: "DELETE" });
       }
-
       setSelectedAlbumIds([]);
       setSelectModeAlbums(false);
-
-      await refreshAll();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete selected albums.");
     }
+
+    setShowDeleteModal(false);
+    setDeleteTarget(null);
+
+    await refreshAll();
+  } catch (err: any) {
+    alert(err.message || "Delete failed.");
   }
+}
 
   function toggleSelected(id: string) {
     setSelectedUploadIds((prev) =>
@@ -1029,6 +1016,44 @@ const daysRemaining =
       <UploadFab />
     </div>
   </>
+)}
+{showDeleteModal && deleteTarget && (
+  <div style={styles.modalOverlay}>
+    <div style={styles.modalCard}>
+      <div style={styles.modalTitle}>Delete Confirmation</div>
+
+      <div style={styles.modalSubtitle}>
+        {isPaid ? (
+          <>This will move the selected item(s) to Trash. They can be restored within 30 days.</>
+        ) : (
+          <>This will permanently delete the selected item(s). This cannot be undone.</>
+        )}
+      </div>
+
+      <div style={{ marginTop: 18, display: "flex", gap: 10 }}>
+        <button
+          onClick={() => {
+            setShowDeleteModal(false);
+            setDeleteTarget(null);
+          }}
+          style={styles.modalSecondaryButton}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleConfirmDelete}
+          style={{
+            ...styles.modalButton,
+            background: "#dc2626",
+            boxShadow: "none",
+          }}
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
 )}
     </main>
   );
