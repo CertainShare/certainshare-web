@@ -21,7 +21,7 @@ export default function FriendsPage() {
   // NEW: search
   const [search, setSearch] = useState("");
 
-  const [isFrozen, setIsFrozen] = useState(false);
+  const [isFrozen, setIsFrozen] = useState<boolean | null>(null);
 
   useEffect(() => {
     const flags = deriveBillingFlags(getClientBillingStatus());
@@ -167,6 +167,10 @@ export default function FriendsPage() {
     () => outgoing.filter(matchesSearch),
     [outgoing, searchLower]
   );
+
+  if (isFrozen === null) {
+  return null;
+}
 
   return (
     <main style={styles.page}>
