@@ -26,10 +26,10 @@ export default function EditAccessModal({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [sharedUsers, setSharedUsers] = useState<any[]>([]);
 
-    useEffect(() => {
-    loadCurrentShares();
-    searchUsers(""); // auto-load friends immediately
-    }, []);
+        useEffect(() => {
+        loadCurrentShares();
+        searchUsers(""); // Load all friends immediately
+        }, []);
 
   async function loadCurrentShares() {
     try {
