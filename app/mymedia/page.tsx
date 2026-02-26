@@ -5,6 +5,7 @@ import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import TopNav from "../components/TopNav";
 import UploadFab from "../components/UploadFab";
+import EditAccessModal from "../components/EditAccessModal";
 import { useRouter } from "next/navigation";
 
 type Album = {
@@ -47,6 +48,13 @@ const [carouselError, setCarouselError] = useState("");
 
   const [albums, setAlbums] = useState<Album[]>([]);
   const [uploads, setUploads] = useState<Upload[]>([]);
+  const [activeUploadMenuId, setActiveUploadMenuId] = useState<string | null>(null);
+  const [activeAlbumMenuId, setActiveAlbumMenuId] = useState<string | null>(null);
+  const [editAccessTarget, setEditAccessTarget] = useState<
+  | { type: "media"; id: string; visibility: "private" | "public" | "custom" }
+  | { type: "album"; id: string; visibility: "private" | "public" | "custom" }
+  | null
+>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -404,6 +412,35 @@ async function handleConfirmDelete() {
     exitSelectModeAlbums();
   }, [view]);
 
+  // NEW: close upload menu when clicking anywhere outside
+useEffect(() => {
+  function handleClickOutside() {
+    setActiveUploadMenuId(null);
+  }
+
+  if (activeUploadMenuId) {
+    window.addEventListener("click", handleClickOutside);
+  }
+
+  return () => {
+    window.removeEventListener("click", handleClickOutside);
+  };
+}, [activeUploadMenuId]);
+
+useEffect(() => {
+  function handleClickOutside() {
+    setActiveAlbumMenuId(null);
+  }
+
+  if (activeAlbumMenuId) {
+    window.addEventListener("click", handleClickOutside);
+  }
+
+  return () => {
+    window.removeEventListener("click", handleClickOutside);
+  };
+}, [activeAlbumMenuId]);
+
   const usagePercent = storage ? Math.min(storage.percent_full * 100, 100) : 0;
 
   const usedGB = storage ? storage.used_bytes / 1024 / 1024 / 1024 : 0;
@@ -611,18 +648,31 @@ const daysRemaining =
                     const selected = selectedAlbumIds.includes(album.id);
 
                     return (
-                      <div
-                        key={album.id}
-                        style={{
-                          ...styles.albumCard,
-                          ...(selected ? styles.albumCardSelected : {}),
-                        }}
-                        onClick={() => {
-                          if (selectModeAlbums) {
-                            toggleSelectedAlbum(album.id);
-                          }
-                        }}
-                      >
+                    <div
+                      key={album.id}
+                      style={{
+                        ...styles.albumCard,
+                        ...(selected ? styles.albumCardSelected : {}),
+                      }}
+                      onMouseEnter={(e) => {
+                        const trigger = e.currentTarget.querySelector(
+                          '[data-album-menu-trigger="true"]'
+                        ) as HTMLElement | null;
+                        if (trigger) trigger.style.opacity = "1";
+                      }}
+                      onMouseLeave={(e) => {
+                        const trigger = e.currentTarget.querySelector(
+                          '[data-album-menu-trigger="true"]'
+                        ) as HTMLElement | null;
+                        if (trigger) trigger.style.opacity = "0";
+                        setActiveAlbumMenuId(null);
+                      }}
+                      onClick={() => {
+                        if (selectModeAlbums) {
+                          toggleSelectedAlbum(album.id);
+                        }
+                      }}
+                    >
                         <Link
                           href={`/album/${album.id}`}
                           style={styles.albumLink}
@@ -650,6 +700,53 @@ const daysRemaining =
                           </div>
                         </Link>
 
+                        {/* 3-dot menu trigger (only when not in select mode) */}
+                        {!selectModeAlbums && (
+                          <>
+                            <div
+                              data-album-menu-trigger="true"
+                              style={styles.menuTrigger}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveAlbumMenuId(
+                                  activeAlbumMenuId === album.id ? null : album.id
+                                );
+                              }}
+                            >
+                              ⋯
+                            </div>
+
+                            {activeAlbumMenuId === album.id && (
+                              <div style={styles.menuDropdown}>
+                                <div
+                                  style={styles.menuItem}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveAlbumMenuId(null);
+                                    setEditAccessTarget({
+                                      type: "album",
+                                      id: album.id,
+                                      visibility: "private", // temporary — we'll improve this next
+                                    });
+                                  }}
+                                >
+                                  Edit Access
+                                </div>
+
+                                <div
+                                  style={{ ...styles.menuItem, color: "#dc2626" }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveAlbumMenuId(null);
+                                    deleteAlbum(album.id);
+                                  }}
+                                >
+                                  Delete
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                         {/* Selection check */}
                         {selectModeAlbums && (
                           <div style={styles.checkCircle}>
@@ -705,12 +802,25 @@ const daysRemaining =
                     const selected = selectedUploadIds.includes(upload.id);
 
                     return (
-                      <div
-                        key={upload.id}
-                        style={{
-                          ...styles.uploadCard,
-                          ...(selected ? styles.uploadCardSelected : {}),
-                        }}
+                  <div
+                    key={upload.id}
+                    style={{
+                      ...styles.uploadCard,
+                      ...(selected ? styles.uploadCardSelected : {}),
+                    }}
+                    onMouseEnter={(e) => {
+                      const trigger = e.currentTarget.querySelector(
+                        '[data-menu-trigger="true"]'
+                      ) as HTMLElement | null;
+                      if (trigger) trigger.style.opacity = "1";
+                    }}
+                    onMouseLeave={(e) => {
+                      const trigger = e.currentTarget.querySelector(
+                        '[data-menu-trigger="true"]'
+                      ) as HTMLElement | null;
+                      if (trigger) trigger.style.opacity = "0";
+                      setActiveUploadMenuId(null);
+                    }}
                         onClick={() => {
                           if (selectMode) {
                             toggleSelected(upload.id);
@@ -720,7 +830,9 @@ const daysRemaining =
                         <Link
                           href={`/media/${upload.id}`}
                           onClick={(e) => {
-                            if (selectMode) e.preventDefault();
+                            if (selectMode || activeUploadMenuId === upload.id) {
+                              e.preventDefault();
+                            }
                           }}
                         >
                           <img
@@ -729,6 +841,56 @@ const daysRemaining =
                             style={styles.uploadImage}
                           />
                         </Link>
+                        {/* 3-dot menu trigger (only when not in select mode) */}
+                        {!selectMode && (
+                          <>
+                            <div
+                              data-menu-trigger="true"
+                              style={styles.menuTrigger}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveUploadMenuId(
+                                  activeUploadMenuId === upload.id ? null : upload.id
+                                );
+                              }}
+                            >
+                              ⋯
+                            </div>
+
+                            {activeUploadMenuId === upload.id && (
+                              <div style={styles.menuDropdown}>
+                                <div
+                                  style={styles.menuItem}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveUploadMenuId(null);
+                                    setEditAccessTarget({
+                                      type: "media",
+                                      id: upload.id,
+                                      visibility:
+                                        upload.visibility === "shared"
+                                          ? "custom"
+                                          : upload.visibility,
+                                    });
+                                  }}
+                                >
+                                  Edit Access
+                                </div>
+
+                                <div
+                                  style={{ ...styles.menuItem, color: "#dc2626" }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveUploadMenuId(null);
+                                    deleteUpload(upload.id);
+                                  }}
+                                >
+                                  Delete
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
 
                         {/* Selection check */}
                         {selectMode && (
@@ -1054,6 +1216,15 @@ const daysRemaining =
       </div>
     </div>
   </div>
+)}
+{editAccessTarget && (
+  <EditAccessModal
+    type={editAccessTarget.type}
+    targetId={editAccessTarget.id}
+    initialVisibility={editAccessTarget.visibility}
+    onClose={() => setEditAccessTarget(null)}
+    onSaved={refreshAll}
+  />
 )}
     </main>
   );
@@ -1744,5 +1915,45 @@ overLimitWarning: {
   color: "#991b1b",
   fontWeight: 850,
   fontSize: 13,
+},
+
+menuTrigger: {
+  position: "absolute",
+  top: 8,
+  right: 8,
+  width: 28,
+  height: 28,
+  borderRadius: 999,
+  background: "rgba(15,23,42,0.65)",
+  color: "white",
+  fontSize: 18,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  zIndex: 5,
+  opacity: 0,
+  transition: "opacity 0.15s ease",
+},
+
+menuDropdown: {
+  position: "absolute",
+  top: 40,
+  right: 8,
+  background: "white",
+  borderRadius: 14,
+  border: "1px solid rgba(15,23,42,0.12)",
+  boxShadow: "0px 18px 40px rgba(0,0,0,0.18)",
+  overflow: "hidden",
+  zIndex: 10,
+  minWidth: 140,
+},
+
+menuItem: {
+  padding: "10px 14px",
+  fontSize: 13,
+  fontWeight: 800,
+  cursor: "pointer",
+  borderBottom: "1px solid rgba(15,23,42,0.06)",
 },
 };
