@@ -11,6 +11,7 @@ export default function DownloadDataPage() {
   const [status, setStatus] = useState<JobStatus | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
+  const [gateReady, setGateReady] = useState(false);
 
   const pollingRef = useRef<number | null>(null);
 
@@ -27,9 +28,39 @@ export default function DownloadDataPage() {
     return "Unknown";
   }, [status]);
 
+    useEffect(() => {
+      async function init() {
+        setError("");
+
+        const token = localStorage.getItem("token");
+        if (!token) {
+          window.location.href = "/login";
+          return;
+        }
+
+        try {
+          await apiFetch("/users/me", { gateOnboarding: true });
+          setGateReady(true);
+        } catch (e: any) {
+          setError(e?.message || "Failed to load account");
+          setGateReady(false);
+        }
+      }
+
+      init();
+    }, []);
+
+    useEffect(() => {
+  return () => stopPolling();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
   async function startExport() {
+    if (!gateReady) return;
     setError("");
     setDownloadUrl(null);
+    setStatus("pending");
+    setJobId(null);
 
     try {
       const res = await apiFetch("/users/me/export", {
@@ -48,6 +79,7 @@ export default function DownloadDataPage() {
   }
 
   async function poll(id: string) {
+    if (!gateReady) return;
     try {
       const res = await apiFetch(`/users/me/export/${id}`, { method: "GET" });
 
@@ -90,6 +122,14 @@ export default function DownloadDataPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
+  if (!gateReady) {
+  return (
+    <div style={styles.page}>
+      <div style={styles.card}>Loading...</div>
+    </div>
+  );
+}
+
   return (
     <div style={styles.page}>
     <Link href="/settings/privacy" style={styles.backBtn}>
@@ -103,7 +143,7 @@ export default function DownloadDataPage() {
         </p>
       </div>
 
-      <div style={styles.grid}>
+      <div className="cs-grid-stack" style={styles.grid}>
         <div style={styles.card}>
           <div style={styles.cardTitle}>What’s included</div>
           <ul style={styles.list}>
@@ -162,16 +202,16 @@ export default function DownloadDataPage() {
           )}
 
           {!isReady && (
-            <button
-              onClick={startExport}
-              disabled={isBusy}
-              style={{
-                ...styles.primaryBtn,
-                ...(isBusy ? styles.primaryBtnDisabled : null),
-              }}
-            >
-              {isBusy ? "Preparing…" : "Generate export"}
-            </button>
+          <button
+            onClick={startExport}
+            disabled={isBusy || !gateReady}
+            style={{
+              ...styles.primaryBtn,
+              ...(isBusy || !gateReady ? styles.primaryBtnDisabled : null),
+            }}
+          >
+            {!gateReady ? "Loading..." : isBusy ? "Preparing…" : "Generate export"}
+          </button>
           )}
 
           {isReady && (

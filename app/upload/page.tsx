@@ -116,15 +116,22 @@ export default function UploadPage() {
     }
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
+    useEffect(() => {
+      async function init() {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          window.location.href = "/login";
+          return;
+        }
 
-    loadFolders();
-  }, []);
+        const me = await apiFetch("/users/me", { gateOnboarding: true });
+        if (!me) return;
+
+        await loadFolders();
+      }
+
+      init();
+    }, []);
 
   useEffect(() => {
     // Load friends only when needed

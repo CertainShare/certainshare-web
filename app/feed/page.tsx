@@ -24,7 +24,7 @@ export default function FeedPage() {
   );
 
   async function loadMe() {
-    const res = await apiFetch("/users/me");
+    const res = await apiFetch("/users/me", { gateOnboarding: true });
     setMe(res);
     return res;
   }
@@ -81,23 +81,40 @@ async function loadFeed() {
     }));
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+useEffect(() => {
+  const token = localStorage.getItem("token");
 
-    if (!token) {
-      window.location.href = "/login";
-      return;
+  if (!token) {
+    window.location.href = "/login";
+    return;
+  }
+
+  async function boot() {
+    try {
+      const user = await loadMe();
+
+      // 🚨 If profile not complete → force MyMedia
+      if (!user?.profileCompleted) {
+        router.replace("/mymedia");
+        return;
+      }
+
+      // 🚨 If onboarding not complete → force MyMedia
+      if (!user?.hasCompletedOnboarding) {
+        router.replace("/mymedia");
+        return;
+      }
+
+      // Otherwise load feed normally
+      await loadFeed();
+    } catch (err) {
+      console.error("Feed boot failed:", err);
+      router.replace("/login");
     }
+  }
 
-    async function boot() {
-      await loadMe();
-
-      // Normal feed load
-      loadFeed();
-    }
-
-    boot();
-  }, []);
+  boot();
+}, []);
 
   return (
     <main style={styles.page}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { apiFetch } from "../../../lib/api";
 import UploadFab from "../../components/UploadFab";
@@ -20,6 +21,7 @@ export default function AlbumPage({
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const router = useRouter();
 
   // Select mode
 const [selectMode, setSelectMode] = useState(false);
@@ -63,6 +65,10 @@ const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
         window.location.href = "/login";
         return;
       }
+
+      // ✅ onboarding/profile gate
+      const me = await apiFetch("/users/me", { gateOnboarding: true });
+      if (!me) return;
 
       const resolvedParams = await params;
       setFolderId(resolvedParams.id);
@@ -119,42 +125,35 @@ async function handleConfirmDelete() {
     <main style={styles.page}>
       <div style={styles.container}>
         {/* HEADER */}
-        <div style={styles.headerRow}>
-          <div>
-            <h1 style={styles.title}>Album</h1>
-            <div style={styles.subtitle}>Browse media inside this album.</div>
-          </div>
+        <div style={styles.topBar}>
+          <button
+            onClick={() => window.history.back()}
+            style={styles.backButton}
+          >
+            ←
+          </button>
 
-          <div style={styles.headerActions}>
+          {!selectMode && items.length > 0 && (
             <button
-              onClick={() => window.history.back()}
-              style={styles.headerButton}
+              onClick={() => setSelectMode(true)}
+              style={styles.selectButton}
             >
-              ← Back
+              Select
             </button>
+          )}
 
-            {!selectMode && items.length > 0 && (
-              <button
-                onClick={() => setSelectMode(true)}
-                style={styles.headerButton}
-              >
-                Select
-              </button>
-            )}
-
-            {selectMode && (
-              <button
-                onClick={() => {
-                  setSelectMode(false);
-                  setSelectedIds([]);
-                }}
-                style={styles.headerButton}
-              >
-                Cancel
-              </button>
-            )}
-          </div>
-          </div>
+          {selectMode && (
+            <button
+              onClick={() => {
+                setSelectMode(false);
+                setSelectedIds([]);
+              }}
+              style={styles.selectButton}
+            >
+              Cancel
+            </button>
+          )}
+        </div>
 
         {/* LOADING */}
         {loading && <div style={styles.statusText}>Loading...</div>}
@@ -174,47 +173,39 @@ async function handleConfirmDelete() {
 
         {/* GRID */}
         {!loading && !error && items.length > 0 && (
-          <div style={styles.galleryCard}>
-            <div style={styles.galleryHeader}>
-              <div style={styles.galleryTitle}>Media</div>
-              <div style={styles.galleryCount}>{items.length} items</div>
-            </div>
-
-            <div style={styles.grid}>
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  style={{
-                    ...styles.tileWrap,
-                    ...(selectedIds.includes(item.id)
-                      ? styles.tileSelected
-                      : {}),
-                  }}
-                  onClick={() => {
-                    if (selectMode) toggleSelected(item.id);
+          <div style={styles.grid}>
+            {items.map((item) => (
+              <div
+                key={item.id}
+                style={{
+                  ...styles.tileWrap,
+                  ...(selectedIds.includes(item.id)
+                    ? styles.tileSelected
+                    : {}),
+                }}
+                onClick={() => {
+                  if (selectMode) toggleSelected(item.id);
+                }}
+              >
+                <Link
+                  href={`/media/${item.id}`}
+                  style={styles.tile}
+                  onClick={(e) => {
+                    if (selectMode) e.preventDefault();
                   }}
                 >
-                  <Link
-                    href={`/media/${item.id}`}
-                    style={styles.tile}
-                    onClick={(e) => {
-                      if (selectMode) e.preventDefault();
-                    }}
-                  >
-                    <img src={item.url} alt="media" style={styles.tileImg} />
-                  </Link>
+                  <img src={item.url} alt="media" style={styles.tileImg} />
+                </Link>
 
-                  {selectMode && (
-                    <div style={styles.checkCircle}>
-                      {selectedIds.includes(item.id) ? "✓" : ""}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                {selectMode && (
+                  <div style={styles.checkCircle}>
+                    {selectedIds.includes(item.id) ? "✓" : ""}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
-      </div>
 
       {selectMode && (
         <div style={styles.bulkBar}>
@@ -289,6 +280,7 @@ async function handleConfirmDelete() {
       {folderId && !selectMode && (
   <UploadFab defaultFolderId={folderId} />
 )}
+    </div>
     </main>
   );
 }
@@ -438,9 +430,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   grid: {
+    marginTop: 12,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-    gap: 12,
+    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+    gap: 6,
   },
 
   tileWrap: {
@@ -449,17 +442,15 @@ const styles: Record<string, React.CSSProperties> = {
 
   tile: {
     display: "block",
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: "hidden",
-    border: "1px solid rgba(15,23,42,0.08)",
-    background: "rgba(15,23,42,0.04)",
-    boxShadow: "0px 10px 20px rgba(15,23,42,0.06)",
     textDecoration: "none",
   },
 
   tileImg: {
     width: "100%",
-    height: 160,
+    height: "100%",
+    aspectRatio: "1 / 1",
     objectFit: "cover",
     display: "block",
   },
@@ -522,5 +513,33 @@ bulkDeleteButton: {
 bulkDeleteDisabled: {
   opacity: 0.5,
   cursor: "not-allowed",
+},
+
+topBar: {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingTop: 10,
+  paddingBottom: 14,
+},
+
+backButton: {
+  background: "transparent",
+  border: "none",
+  fontSize: 28,
+  cursor: "pointer",
+  fontWeight: 900,
+  color: "var(--text)",
+  padding: "4px 6px",
+  lineHeight: 1,
+},
+
+selectButton: {
+  background: "transparent",
+  border: "none",
+  fontSize: 14,
+  fontWeight: 850,
+  cursor: "pointer",
+  color: "#2563eb",
 },
 };

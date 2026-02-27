@@ -102,13 +102,20 @@ export default function BillingPage() {
   }
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-      return;
+    async function init() {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const me = await apiFetch("/users/me", { gateOnboarding: true });
+      if (!me) return;
+
+      await loadBilling();
     }
 
-    loadBilling();
+    init();
   }, []);
 
   useEffect(() => {

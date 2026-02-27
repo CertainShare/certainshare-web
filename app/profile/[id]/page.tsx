@@ -174,22 +174,29 @@ async function unblockUser() {
     }
   }
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+    useEffect(() => {
+      async function init() {
+        const token = localStorage.getItem("token");
 
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
+        if (!token) {
+          window.location.href = "/login";
+          return;
+        }
 
-    // Frozen users cannot view other profiles
-    if (isFrozen) {
-      router.replace("/friends");
-      return;
-    }
+        const me = await apiFetch("/users/me", { gateOnboarding: true });
+        if (!me) return;
 
-    refreshAll();
-  }, [id]);
+        // Frozen users cannot view other profiles
+        if (isFrozen) {
+          router.replace("/friends");
+          return;
+        }
+
+        await refreshAll();
+      }
+
+      init();
+    }, [id]);
 
   useEffect(() => {
   function handleClickOutside() {

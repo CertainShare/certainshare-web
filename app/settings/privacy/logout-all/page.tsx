@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../../../lib/api";
 
 export default function LogoutAllDevicesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+  async function init() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const me = await apiFetch("/users/me", { gateOnboarding: true });
+    if (!me) return;
+  }
+
+  init();
+}, []);
 
   async function handleLogoutAll() {
     setLoading(true);

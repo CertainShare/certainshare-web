@@ -53,6 +53,9 @@ export default function BlockedUsersPage() {
       setError("");
 
       try {
+        const me = await apiFetch("/users/me", { gateOnboarding: true });
+        if (!me) return;
+
         await loadBlockedUsers();
       } catch (err: any) {
         setError(err.message || "Failed to load blocked users");

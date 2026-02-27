@@ -99,14 +99,21 @@ useEffect(() => {
   }
 
     useEffect(() => {
-      const token = localStorage.getItem("token");
+      async function init() {
+        const token = localStorage.getItem("token");
 
-      if (!token) {
-        window.location.href = "/login";
-        return;
+        if (!token) {
+          window.location.href = "/login";
+          return;
+        }
+
+        const me = await apiFetch("/users/me", { gateOnboarding: true });
+        if (!me) return;
+
+        await loadAll();
       }
 
-      loadAll();
+      init();
     }, []);
 
     if (isFrozen === null) {

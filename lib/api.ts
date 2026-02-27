@@ -8,10 +8,11 @@ if (!BASE_URL) {
   throw new Error("Missing NEXT_PUBLIC_API_BASE_URL in .env.local");
 }
 
-export async function apiFetch(
-  path: string,
-  options: RequestInit = {}
-): Promise<any> {
+type ApiFetchOptions = RequestInit & {
+  gateOnboarding?: boolean; // ✅ new
+};
+
+export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<any> {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -24,8 +25,11 @@ export async function apiFetch(
     headers.Authorization = `Bearer ${token}`;
   }
 
+  // strip our custom option so fetch doesn't get it
+  const { gateOnboarding, ...fetchOptions } = options;
+
   const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   });
 
@@ -46,7 +50,25 @@ export async function apiFetch(
     }
 
     const message = data?.error || data?.message || "Request failed";
-    throw new Error(message);
+    // Preserve code if backend sends it
+    const err: any = new Error(message);
+    if (data?.code) err.code = data.code;
+    throw err;
+  }
+
+  // ✅ Optional onboarding gate: only when caller asks for it
+  if (typeof window !== "undefined" && gateOnboarding) {
+    const isOnMyMedia = window.location.pathname.startsWith("/mymedia");
+
+    const needsProfile =
+      data?.profileCompleted === false || data?.profile_completed === false;
+    const needsOnboarding =
+      data?.hasCompletedOnboarding === false || data?.has_completed_onboarding === false;
+
+    if (!isOnMyMedia && (needsProfile || needsOnboarding)) {
+      window.location.href = "/mymedia";
+      return;
+    }
   }
 
   // ✅ Store billing status if backend included it

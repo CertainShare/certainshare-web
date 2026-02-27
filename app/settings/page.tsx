@@ -25,7 +25,7 @@ export default function SettingsPage() {
       setError("");
 
       try {
-        const m = await apiFetch("/users/me");
+        const m = await apiFetch("/users/me", { gateOnboarding: true });
         const s = await apiFetch("/storage/fullness");
         const b = await apiFetch("/billing/status");
 

@@ -687,6 +687,12 @@ const daysRemaining =
                                 alt={album.name}
                                 style={styles.albumImage}
                               />
+                            ) : album.media && album.media.length > 0 && album.media[0]?.url ? (
+                              <img
+                                src={album.media[0].url}
+                                alt={album.name}
+                                style={styles.albumImage}
+                              />
                             ) : (
                               <div style={styles.albumPlaceholder}>📁</div>
                             )}

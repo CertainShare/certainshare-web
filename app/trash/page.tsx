@@ -77,15 +77,22 @@ async function confirmPermanentDelete() {
   }
 }
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
+    useEffect(() => {
+      async function init() {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          window.location.href = "/login";
+          return;
+        }
 
-    loadTrash();
-  }, []);
+        const me = await apiFetch("/users/me", { gateOnboarding: true });
+        if (!me) return;
+
+        await loadTrash();
+      }
+
+      init();
+    }, []);
 
   return (
     <main style={styles.page}>

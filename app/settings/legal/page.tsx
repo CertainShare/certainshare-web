@@ -1,6 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
+import { apiFetch } from "../../../lib/api";
 import Link from "next/link";
+
+useEffect(() => {
+  async function init() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const me = await apiFetch("/users/me", { gateOnboarding: true });
+    if (!me) return;
+  }
+
+  init();
+}, []);
 
 export default function LegalIndexPage() {
   return (

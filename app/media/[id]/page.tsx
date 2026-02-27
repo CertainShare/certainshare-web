@@ -49,6 +49,10 @@ export default function MediaPage({
         return;
       }
 
+      // ✅ onboarding/profile gate
+      const me = await apiFetch("/users/me", { gateOnboarding: true });
+      if (!me) return;
+
       const resolvedParams = await params;
       setMediaId(resolvedParams.id);
     }

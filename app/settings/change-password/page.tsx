@@ -14,11 +14,18 @@ export default function ChangePasswordPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-      return;
+    async function init() {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const me = await apiFetch("/users/me", { gateOnboarding: true });
+      if (!me) return;
     }
+
+    init();
   }, []);
 
   async function handleChangePassword(e: any) {

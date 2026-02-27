@@ -41,9 +41,17 @@ router.push("/login/2fa");
 
       localStorage.setItem("token", token);
       router.push("/feed");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+      } catch (err: any) {
+        if (err?.code === "EMAIL_NOT_VERIFIED") {
+          // store email so resend page can use it
+          localStorage.setItem("pending_verify_email", email);
+
+          router.push("/verify-email");
+          return;
+        }
+
+        setError(err.message || "Login failed");
+      } finally {
       setLoading(false);
     }
   }

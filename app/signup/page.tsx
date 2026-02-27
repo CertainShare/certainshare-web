@@ -65,15 +65,15 @@ export default function SignupPage() {
         }),
       });
 
-      const token = res.token;
+      if (res.requires_email_verification) {
+        // store email so verify page can resend
+        localStorage.setItem("pending_verify_email", email);
 
-      if (!token) {
-        throw new Error("Signup succeeded but no token was returned.");
+        router.push("/verify-email");
+        return;
       }
 
-      localStorage.setItem("token", token);
-
-      router.push("/mymedia");
+    throw new Error("Unexpected signup response.");
     } catch (err: any) {
       setError(err.message || "Signup failed");
     } finally {

@@ -27,9 +27,16 @@ export default function TwoFactorSettingsPage() {
     setError("");
 
     try {
-      const res = await apiFetch("/users/me");
+  const token = localStorage.getItem("token");
+  if (!token) {
+    window.location.href = "/login";
+    return;
+  }
 
-      setEnabled(!!res?.two_factor_enabled);
+  const res = await apiFetch("/users/me", { gateOnboarding: true });
+  if (!res) return; // gate may redirect
+
+  setEnabled(!!res?.two_factor_enabled);
     } catch (err: any) {
       setError(err.message);
     } finally {

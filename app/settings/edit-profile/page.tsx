@@ -25,7 +25,7 @@ export default function EditProfilePage() {
   const [showPicker, setShowPicker] = useState(false);
 
   async function loadMe() {
-    const me = await apiFetch("/users/me");
+    const me = await apiFetch("/users/me", { gateOnboarding: true });
 
     setDisplayName(me.display_name || "");
     setBio(me.bio || "");
@@ -160,13 +160,20 @@ export default function EditProfilePage() {
   }
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      window.location.href = "/login";
-      return;
+    async function init() {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const me = await apiFetch("/users/me", { gateOnboarding: true });
+      if (!me) return;
+
+      await refreshAll();
     }
 
-    refreshAll();
+    init();
   }, []);
 
   return (

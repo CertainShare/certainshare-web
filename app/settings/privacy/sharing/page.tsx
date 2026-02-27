@@ -26,7 +26,8 @@ export default function SharingPreferencesPage() {
       setError("");
 
       try {
-        const me = await apiFetch("/users/me");
+        const me = await apiFetch("/users/me", { gateOnboarding: true });
+        if (!me) return;
 
         setDefaultMedia(me.default_media_visibility || "private");
         setDefaultFolder(me.default_folder_visibility || "private");

@@ -67,12 +67,16 @@ export default function EditAccessModal({
         ? `/media/${targetId}/sharing`
         : `/folders/${targetId}/sharing`;
 
-      await apiFetch(endpoint, {
-        method: "PATCH",
-        body: JSON.stringify({
-          visibility,
-        }),
-      });
+        await apiFetch(endpoint, {
+          method: "PATCH",
+          body: JSON.stringify({
+            visibility,
+            shared_user_ids:
+              visibility === "custom"
+                ? sharedUsers.map((u) => u.id)
+                : [],
+          }),
+        });
 
       onSaved();
       onClose();
@@ -126,12 +130,18 @@ export default function EditAccessModal({
                 <div key={u.id} style={userRow}>
                   <span>{u.display_name || u.email}</span>
                   <button
+                    disabled={sharedUsers.some((x) => x.id === u.id)}
                     onClick={() => {
-                      // We'll wire this next
+                      if (sharedUsers.some((x) => x.id === u.id)) return;
+                      setSharedUsers((prev) => [...prev, u]);
                     }}
-                    style={addButton}
+                    style={{
+                      ...addButton,
+                      opacity: sharedUsers.some((x) => x.id === u.id) ? 0.5 : 1,
+                      cursor: sharedUsers.some((x) => x.id === u.id) ? "default" : "pointer",
+                    }}
                   >
-                    Add
+                    {sharedUsers.some((x) => x.id === u.id) ? "Added" : "Add"}
                   </button>
                 </div>
               ))}
@@ -145,7 +155,14 @@ export default function EditAccessModal({
               {sharedUsers.map((u) => (
                 <div key={u.id} style={userRow}>
                   <span>{u.display_name || u.email}</span>
-                  <button style={removeButton}>
+                  <button
+                    style={removeButton}
+                    onClick={() => {
+                      setSharedUsers((prev) =>
+                        prev.filter((x) => x.id !== u.id)
+                      );
+                    }}
+                  >
                     Remove
                   </button>
                 </div>

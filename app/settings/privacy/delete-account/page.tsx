@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../../../lib/api";
 
@@ -18,6 +18,21 @@ export default function DeleteAccountPage() {
     password.trim().length > 0 &&
     confirmText.trim().toUpperCase() === "DELETE" &&
     !loading;
+
+    useEffect(() => {
+  async function init() {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const me = await apiFetch("/users/me", { gateOnboarding: true });
+    if (!me) return;
+  }
+
+  init();
+}, []);
 
   async function handleDelete() {
     setError("");
