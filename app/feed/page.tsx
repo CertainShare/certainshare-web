@@ -157,6 +157,7 @@ useEffect(() => {
               const items = isBatch ? item.items || [] : [];
 
               const activeItem = items.length > 0 ? items[slideIndex] : null;
+              const ownerId = item.owner?.id || item.owner_id || null;
 
               return (
                 <div key={item.id} style={styles.card}>
@@ -169,16 +170,27 @@ useEffect(() => {
                       </div>
 
                       <div>
+                      {ownerId ? (
+                        <Link
+                          href={
+                            ownerId === me?.id
+                              ? "/mymedia"
+                              : `/profile/${ownerId}`
+                          }
+                          style={styles.usernameLink}
+                        >
+                          {item.owner?.display_name || "Unknown"}
+                        </Link>
+                      ) : (
                         <div style={styles.username}>
                           {item.owner?.display_name || "Unknown"}
                         </div>
+                      )}
                         <div style={styles.timestamp}>
                           {new Date(item.created_at).toLocaleString()}
                         </div>
                       </div>
                     </div>
-
-                    <span style={styles.badge}>{item.visibility}</span>
                   </div>
 
                   {/* SINGLE */}
@@ -195,12 +207,6 @@ useEffect(() => {
                       {item.note && (
                         <div style={styles.caption}>{item.note}</div>
                       )}
-
-                      <div style={styles.metaRow}>
-                        <Link href={`/media/${item.id}`} style={styles.link}>
-                          Open
-                        </Link>
-                      </div>
                     </>
                   )}
 
@@ -452,17 +458,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--muted2)",
   },
 
-  badge: {
-    background: "rgba(15,23,42,0.06)",
-    color: "#0f172a",
-    padding: "6px 10px",
-    borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 700,
-    border: "1px solid rgba(15,23,42,0.08)",
-    whiteSpace: "nowrap",
-  },
-
   // UPDATED: prevents huge tall images but still keeps clean instagram feel
   imageWrap: {
     width: "100%",
@@ -480,24 +475,6 @@ const styles: Record<string, React.CSSProperties> = {
     objectFit: "contain",
     display: "block",
     background: "#000",
-  },
-
-  metaRow: {
-    marginTop: 12,
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-  },
-
-  link: {
-    textDecoration: "none",
-    fontWeight: 750,
-    fontSize: 13,
-    color: "var(--primary)",
-    padding: "8px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(37,99,235,0.18)",
-    background: "rgba(37,99,235,0.06)",
   },
 
   folderAction: {
@@ -641,4 +618,30 @@ const styles: Record<string, React.CSSProperties> = {
     background: "white",
     lineHeight: 1.5,
   },
+
+  usernameLink: {
+  fontWeight: 750,
+  fontSize: 14,
+  color: "var(--text)",
+  textDecoration: "none",
+  cursor: "pointer",
+},
+
+metaRow: {
+  marginTop: 12,
+  display: "flex",
+  justifyContent: "flex-end",
+  alignItems: "center",
+},
+
+link: {
+  textDecoration: "none",
+  fontWeight: 750,
+  fontSize: 13,
+  color: "var(--primary)",
+  padding: "8px 12px",
+  borderRadius: 12,
+  border: "1px solid rgba(37,99,235,0.18)",
+  background: "rgba(37,99,235,0.06)",
+},
 };

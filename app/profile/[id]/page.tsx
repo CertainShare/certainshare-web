@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { apiFetch } from "../../../lib/api";
+import Link from "next/link";
 import TopNav from "../../components/TopNav";
 import UploadFab from "../../components/UploadFab";
 import { useRouter } from "next/navigation";
@@ -358,21 +359,25 @@ async function unblockUser() {
             ) : (
                 <div style={styles.gridUploads}>
                 {albums.map((album) => (
-                    <div key={album.id} style={styles.uploadCard}>
+                  <div
+                    key={album.id}
+                    style={styles.uploadCard}
+                    onClick={() => router.push(`/album/${album.id}`)}
+                  >
                     <div style={styles.albumThumb}>
-                        {album.hero_uri ? (
+                      {album.hero_uri ? (
                         <img
-                            src={album.hero_uri}
-                            alt="album"
-                            style={styles.uploadImage}
+                          src={album.hero_uri}
+                          alt="album"
+                          style={styles.uploadImage}
                         />
-                        ) : (
+                      ) : (
                         <div style={styles.emptyAlbum}>No Cover</div>
-                        )}
+                      )}
                     </div>
 
                     <div style={styles.albumName}>{album.name || "Untitled Album"}</div>
-                    </div>
+                  </div>
                 ))}
                 </div>
             )
@@ -380,20 +385,26 @@ async function unblockUser() {
             <div style={styles.mutedText}>No visible uploads from this user.</div>
             ) : (
             <div style={styles.gridUploads}>
-                {uploads.map((upload) => (
-                <div key={upload.id} style={styles.uploadCard}>
-                    <img
+            {uploads.map((upload) => (
+              <Link
+                key={upload.id}
+                href={`/media/${upload.id}?user=${id}`}
+                style={{ textDecoration: "none" }}
+              >
+                <div style={styles.uploadCard}>
+                  <img
                     src={
-                        upload.url ||
-                        upload.uri ||
-                        upload.cloudfront_url ||
-                        upload.signed_url
+                      upload.url ||
+                      upload.uri ||
+                      upload.cloudfront_url ||
+                      upload.signed_url
                     }
                     alt="upload"
                     style={styles.uploadImage}
-                    />
+                  />
                 </div>
-                ))}
+              </Link>
+            ))}
             </div>
             )}
             </div>
@@ -604,8 +615,8 @@ emptyAlbum: {
     border: "1px solid var(--border)",
     background: "white",
     boxShadow: "var(--shadow-md)",
+    cursor: "pointer",
   },
-
   uploadImage: {
     width: "100%",
     height: 160,

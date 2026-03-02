@@ -17,6 +17,9 @@ export default function AlbumPage({
   params: Promise<{ id: string }>;
 }) {
   const [folderId, setFolderId] = useState<string | null>(null);
+  const [folderName, setFolderName] = useState<string>("Album");
+  const [folderOwnerId, setFolderOwnerId] = useState<string | null>(null);
+  const [sharedUserIds, setSharedUserIds] = useState<string[]>([]);
 
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +60,19 @@ const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
     }
   }
 
+  async function loadFolderMeta(folderId: string) {
+  try {
+    const res = await apiFetch(`/folders/${folderId}/meta`);
+    setFolderName(res?.name || "Album");
+    setFolderOwnerId(res?.owner_id || null);
+    setSharedUserIds(res?.shared_user_ids || []);
+  } catch {
+    setFolderName("Album");
+    setFolderOwnerId(null);
+    setSharedUserIds([]);
+  }
+}
+
   // Step 1: Resolve params + check auth
   useEffect(() => {
     async function init() {
@@ -72,6 +88,7 @@ const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
 
       const resolvedParams = await params;
       setFolderId(resolvedParams.id);
+      await loadFolderMeta(resolvedParams.id);
 
       await loadBillingStatus();
     }
@@ -125,34 +142,49 @@ async function handleConfirmDelete() {
     <main style={styles.page}>
       <div style={styles.container}>
         {/* HEADER */}
-        <div style={styles.topBar}>
-          <button
-            onClick={() => window.history.back()}
-            style={styles.backButton}
-          >
-            ←
-          </button>
-
-          {!selectMode && items.length > 0 && (
+        <div style={styles.headerWrap}>
+          <div style={styles.headerLeft}>
             <button
-              onClick={() => setSelectMode(true)}
-              style={styles.selectButton}
+              onClick={() => window.history.back()}
+              style={styles.backButton}
             >
-              Select
+              ←
             </button>
-          )}
+          </div>
 
-          {selectMode && (
-            <button
-              onClick={() => {
-                setSelectMode(false);
-                setSelectedIds([]);
-              }}
-              style={styles.selectButton}
-            >
-              Cancel
-            </button>
-          )}
+          <div style={styles.headerCenter}>
+            <div style={styles.albumTitle}>{folderName}</div>
+
+            {sharedUserIds.length > 0 && (
+              <div style={styles.albumShared}>
+                Shared with {sharedUserIds.length}{" "}
+                {sharedUserIds.length === 1 ? "person" : "people"}
+              </div>
+            )}
+          </div>
+
+          <div style={styles.headerRight}>
+            {!selectMode && items.length > 0 && (
+              <button
+                onClick={() => setSelectMode(true)}
+                style={styles.selectButton}
+              >
+                Select
+              </button>
+            )}
+
+            {selectMode && (
+              <button
+                onClick={() => {
+                  setSelectMode(false);
+                  setSelectedIds([]);
+                }}
+                style={styles.selectButton}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
 
         {/* LOADING */}
@@ -188,7 +220,7 @@ async function handleConfirmDelete() {
                 }}
               >
                 <Link
-                  href={`/media/${item.id}`}
+                  href={`/media/${item.id}?album=${folderId}`}
                   style={styles.tile}
                   onClick={(e) => {
                     if (selectMode) e.preventDefault();
@@ -430,13 +462,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   grid: {
-    marginTop: 12,
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: 6,
+    columnCount: 4,
+    columnGap: 8,
   },
 
   tileWrap: {
+    breakInside: "avoid",
+    marginBottom: 8,
     position: "relative",
   },
 
@@ -449,9 +481,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   tileImg: {
     width: "100%",
-    height: "100%",
-    aspectRatio: "1 / 1",
-    objectFit: "cover",
+    height: "auto",
     display: "block",
   },
 
@@ -515,14 +545,6 @@ bulkDeleteDisabled: {
   cursor: "not-allowed",
 },
 
-topBar: {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  paddingTop: 10,
-  paddingBottom: 14,
-},
-
 backButton: {
   background: "transparent",
   border: "none",
@@ -541,5 +563,43 @@ selectButton: {
   fontWeight: 850,
   cursor: "pointer",
   color: "#2563eb",
+},
+
+headerWrap: {
+  display: "grid",
+  gridTemplateColumns: "1fr auto 1fr",
+  alignItems: "center",
+  paddingTop: 10,
+  paddingBottom: 18,
+},
+
+headerLeft: {
+  justifySelf: "start",
+},
+
+headerCenter: {
+  textAlign: "center",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 4,
+},
+
+headerRight: {
+  justifySelf: "end",
+},
+
+albumTitle: {
+  fontSize: 22,
+  fontWeight: 900,
+  letterSpacing: "-0.5px",
+  color: "var(--text)",
+},
+
+albumShared: {
+  marginTop: 4,
+  fontSize: 13,
+  color: "var(--muted)",
+  fontWeight: 600,
 },
 };

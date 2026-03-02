@@ -834,7 +834,7 @@ const daysRemaining =
                         }}
                       >
                         <Link
-                          href={`/media/${upload.id}`}
+                          href={`/media/${upload.id}?library=1`}
                           onClick={(e) => {
                             if (selectMode || activeUploadMenuId === upload.id) {
                               e.preventDefault();

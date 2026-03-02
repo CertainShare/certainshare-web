@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
 
 type UploadItem = {
@@ -15,6 +16,13 @@ export default function MediaPage({
   params: Promise<{ id: string }>;
 }) {
   const [mediaId, setMediaId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const userId = searchParams.get("user");
+  const albumId = searchParams.get("album");
+  const isLibrary = searchParams.get("library");
+
+  const [mediaList, setMediaList] = useState<string[]>([]);
+  const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [item, setItem] = useState<UploadItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -30,14 +38,90 @@ export default function MediaPage({
         throw new Error("Media not found");
       }
 
-      setItem({
-        ...res.media,
-        url: res.media.url || res.media.object_key,
-      });
+    setItem({
+      ...res.media,
+      url:
+        res.media.url ||
+        res.media.signed_url ||
+        res.media.cloudfront_url ||
+        res.media.uri ||
+        "",
+    });
     } catch (err: any) {
       setError(err.message || "Failed to load media");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadContextList(currentId: string) {
+    try {
+      let list: string[] = [];
+
+      // ✅ Album context
+      if (albumId) {
+        const res = await apiFetch(`/folders/${albumId}/media`);
+        list = (res || []).map((m: any) => m.id);
+      }
+
+      // ✅ Other user's uploads
+      else if (userId) {
+        const res = await apiFetch(`/users/${userId}/uploads`);
+        list = (res.uploads || []).map((m: any) => m.id);
+      }
+
+      // ✅ Your own uploads
+      else if (isLibrary) {
+        const res = await apiFetch(`/media/my`);
+        list = (res || []).map((m: any) => m.id);
+      }
+
+      setMediaList(list);
+
+      const index = list.indexOf(currentId);
+      if (index !== -1) {
+        setCurrentIndex(index);
+      }
+    } catch {
+      setMediaList([]);
+    }
+  }
+
+  function goNext() {
+    if (currentIndex < mediaList.length - 1) {
+      const nextId = mediaList[currentIndex + 1];
+      setCurrentIndex(currentIndex + 1);
+      setMediaId(nextId);
+
+      const query =
+        albumId
+          ? `?album=${albumId}`
+          : userId
+          ? `?user=${userId}`
+          : isLibrary
+          ? `?library=1`
+          : "";
+
+      window.history.replaceState(null, "", `/media/${nextId}${query}`);
+    }
+  }
+
+  function goPrev() {
+    if (currentIndex > 0) {
+      const prevId = mediaList[currentIndex - 1];
+      setCurrentIndex(currentIndex - 1);
+      setMediaId(prevId);
+
+      const query =
+        albumId
+          ? `?album=${albumId}`
+          : userId
+          ? `?user=${userId}`
+          : isLibrary
+          ? `?library=1`
+          : "";
+
+      window.history.replaceState(null, "", `/media/${prevId}${query}`);
     }
   }
 
@@ -62,30 +146,20 @@ export default function MediaPage({
 
   useEffect(() => {
     if (!mediaId) return;
-    loadMedia(mediaId);
+
+    const id = mediaId; // capture as definite string
+
+    async function loadAll() {
+      await loadMedia(id);
+      await loadContextList(id);
+    }
+
+    loadAll();
   }, [mediaId]);
 
   return (
     <main style={styles.page}>
       <div style={styles.container}>
-        {/* HEADER */}
-        <div style={styles.headerRow}>
-          <div>
-            <h1 style={styles.title}>Media Viewer</h1>
-            <div style={styles.subtitle}>
-              Private, secure storage — only shared intentionally.
-            </div>
-          </div>
-
-          <div style={styles.headerActions}>
-            <button
-              onClick={() => window.history.back()}
-              style={styles.backButton}
-            >
-              ← Back
-            </button>
-          </div>
-        </div>
 
         {/* LOADING */}
         {loading && <div style={styles.statusText}>Loading...</div>}
@@ -96,38 +170,35 @@ export default function MediaPage({
         {/* MEDIA VIEW */}
         {!loading && !error && item && (
           <div style={styles.viewerCard}>
-            {/* MEDIA */}
             <div style={styles.viewerTop}>
               <div style={styles.imageStage}>
                 <img src={item.url} alt="media" style={styles.image} />
-              </div>
-            </div>
 
-            {/* DETAILS */}
-            <div style={styles.viewerBottom}>
-              <div style={styles.detailsRow}>
-                <div style={styles.detailsLeft}>
-                  <div style={styles.detailLabel}>Visibility</div>
-                  <div style={styles.detailValue}>
-                    <span style={styles.visibilityBadge}>
-                      {item.visibility}
-                    </span>
-                  </div>
+                {/* Back Arrow Overlay */}
+                <button
+                  onClick={() => window.history.back()}
+                  style={styles.viewerBackOverlay}
+                >
+                  ←
+                </button>
+
+                {mediaList.length > 1 && (
+                  <>
+                    <button onClick={goPrev} style={styles.leftArrow}>
+                      ‹
+                    </button>
+                    <button onClick={goNext} style={styles.rightArrow}>
+                      ›
+                    </button>
+                  </>
+                )}
+
+                {/* Visibility Overlay */}
+                <div style={styles.imageOverlay}>
+                  <span style={styles.visibilityBadge}>
+                    {item.visibility}
+                  </span>
                 </div>
-
-                <div style={styles.detailsRight}>
-                  <div style={styles.detailLabel}>Status</div>
-                  <div style={styles.detailValue}>
-                    <span style={styles.statusBadge}>
-                      Stored securely
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div style={styles.noteBox}>
-                This file is stored inside your CertainShare library.
-                You can change visibility from the upload settings later.
               </div>
             </div>
           </div>
@@ -139,14 +210,16 @@ export default function MediaPage({
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
-    background: "var(--bg)",
+    background: "#0f172a",
     minHeight: "100vh",
   },
 
   container: {
-    maxWidth: 980,
-    margin: "0 auto",
-    padding: 24,
+    width: "100%",
+    height: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
   },
 
   headerRow: {
@@ -213,39 +286,31 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   viewerCard: {
-    borderRadius: 24,
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
     overflow: "hidden",
-    border: "1px solid var(--border)",
-    background: "white",
-    boxShadow: "var(--shadow-md)",
   },
 
   viewerTop: {
-    background:
-      "linear-gradient(180deg, rgba(15,23,42,0.04), rgba(15,23,42,0.02))",
-    padding: 14,
+    flex: 1,
+    display: "flex",
+    overflow: "hidden", 
   },
 
   imageStage: {
-    borderRadius: 18,
-    overflow: "hidden",
-    background: "rgba(15,23,42,0.08)",
-    border: "1px solid rgba(15,23,42,0.10)",
+    flex: 1,
     display: "flex",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    background: "#0f172a",
+    position: "relative",
   },
 
   image: {
-    width: "100%",
-    maxHeight: 680,
+    maxWidth: "100%",
+    maxHeight: "100%",
     objectFit: "contain",
-    display: "block",
-    background: "rgba(15,23,42,0.92)",
-  },
-
-  viewerBottom: {
-    padding: 18,
   },
 
   detailsRow: {
@@ -284,34 +349,75 @@ const styles: Record<string, React.CSSProperties> = {
   visibilityBadge: {
     display: "inline-block",
     fontSize: 12,
-    fontWeight: 950,
-    padding: "7px 12px",
+    fontWeight: 700,
+    padding: "6px 12px",
     borderRadius: 999,
-    border: "1px solid rgba(15,23,42,0.10)",
-    background: "rgba(15,23,42,0.04)",
-    color: "var(--text)",
+    background: "rgba(255,255,255,0.12)",
+    color: "white",
+    backdropFilter: "blur(6px)",
   },
 
-  statusBadge: {
-    display: "inline-block",
-    fontSize: 12,
-    fontWeight: 950,
-    padding: "7px 12px",
-    borderRadius: 999,
-    border: "1px solid rgba(34,197,94,0.18)",
-    background: "rgba(34,197,94,0.10)",
-    color: "#166534",
-  },
+viewerBack: {
+  background: "transparent",
+  border: "none",
+  fontSize: 28,
+  fontWeight: 900,
+  cursor: "pointer",
+  color: "white",
+  padding: "8px 10px",
+  borderRadius: 8,
+},
 
-  noteBox: {
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 18,
-    border: "1px solid rgba(37,99,235,0.14)",
-    background: "rgba(37,99,235,0.06)",
-    fontSize: 13,
-    fontWeight: 750,
-    color: "var(--text)",
-    lineHeight: "18px",
-  },
+imageOverlay: {
+  position: "absolute",
+  bottom: 24,
+  left: 24,
+},
+
+viewerBackOverlay: {
+  position: "absolute",
+  top: 20,
+  left: 20,
+  background: "rgba(0,0,0,0.4)",
+  color: "white",
+  border: "none",
+  fontSize: 26,
+  fontWeight: 900,
+  cursor: "pointer",
+  padding: "8px 12px",
+  borderRadius: 999,
+  backdropFilter: "blur(6px)",
+},
+
+leftArrow: {
+  position: "absolute",
+  left: 20,
+  top: "50%",
+  transform: "translateY(-50%)",
+  background: "rgba(0,0,0,0.4)",
+  color: "white",
+  border: "none",
+  fontSize: 36,
+  fontWeight: 900,
+  cursor: "pointer",
+  borderRadius: 999,
+  padding: "6px 14px",
+  backdropFilter: "blur(6px)",
+},
+
+rightArrow: {
+  position: "absolute",
+  right: 20,
+  top: "50%",
+  transform: "translateY(-50%)",
+  background: "rgba(0,0,0,0.4)",
+  color: "white",
+  border: "none",
+  fontSize: 36,
+  fontWeight: 900,
+  cursor: "pointer",
+  borderRadius: 999,
+  padding: "6px 14px",
+  backdropFilter: "blur(6px)",
+},
 };
