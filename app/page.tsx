@@ -16,10 +16,9 @@ export default function HomePage() {
       {/* NAV */}
       <header style={styles.navWrapper}>
         <div style={styles.navInner}>
-          <div style={styles.brandRow}>
-            <div style={styles.logoCircle}>CS</div>
-            <div style={styles.brandText}>CertainShare</div>
-          </div>
+        <Link href="/" style={styles.brandRow}>
+          <img src="/logo.svg" alt="CertainShare" style={styles.brandLogo}/>
+        </Link>
 
           <div style={styles.navActions}>
             {hasToken ? (
@@ -475,6 +474,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 15,
     letterSpacing: "-0.4px",
     color: "var(--text)",
+    textDecoration: "none",
   },
 
   logoCircle: {
@@ -1181,4 +1181,10 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(147,51,234,0.18)",
     color: "#7e22ce",
   },
+
+  brandLogo: {
+  height: 50,
+  width: "auto",
+  display: "block",
+},
 };

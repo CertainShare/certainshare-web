@@ -50,10 +50,13 @@ export default function TopNav() {
   return (
     <div style={styles.topNavWrapper}>
       <div style={styles.topNavInner}>
-        <div style={styles.brand}>
-          <div style={styles.brandDot} />
-          CertainShare
-        </div>
+      <Link href="/feed" style={styles.brand}>
+        <img
+          src="/logo.svg"
+          alt="CertainShare"
+          style={styles.brandLogo}
+        />
+      </Link>
 
         <div style={styles.navIcons}>
           <Link
@@ -139,25 +142,21 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 10,
-    fontWeight: 700,
-    fontSize: 15,
-    letterSpacing: "-0.2px",
-    color: "#0f172a",
+    cursor: "pointer",
+    textDecoration: "none",
   },
 
-  brandDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    background: "#2563eb",
-    boxShadow: "0px 6px 16px rgba(37,99,235,0.35)",
-  },
+  brandLogo: {
+  height: 32,
+  width: "auto",
+  display: "block",
+},
 
   navIcons: {
     display: "flex",
     gap: 8,
     alignItems: "center",
-    padding: 6,
+    padding: 4,
     borderRadius: 16,
     background: "rgba(255,255,255,0.75)",
     border: "1px solid rgba(229,231,235,0.9)",
