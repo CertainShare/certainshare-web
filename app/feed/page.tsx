@@ -159,15 +159,25 @@ useEffect(() => {
               const activeItem = items.length > 0 ? items[slideIndex] : null;
               const ownerId = item.owner?.id || item.owner_id || null;
 
+              const showActionLine =
+                item.type === "folder_batch" ||
+                (item.type === "batch" && items.length > 1);
+
               return (
                 <div key={item.id} style={styles.card}>
                   <div style={styles.cardHeader}>
                     <div style={styles.userRow}>
-                      <div style={styles.avatarCircle}>
-                        {(item.owner?.display_name || "U")
-                          .slice(0, 1)
-                          .toUpperCase()}
-                      </div>
+                    <div style={styles.avatarCircle}>
+                      {item.owner?.profile_photo_url ? (
+                        <img
+                          src={item.owner.profile_photo_url}
+                          alt="avatar"
+                          style={styles.avatarImage}
+                        />
+                      ) : (
+                        (item.owner?.display_name || "U").slice(0, 1).toUpperCase()
+                      )}
+                    </div>
 
                       <div>
                       {ownerId ? (
@@ -205,87 +215,94 @@ useEffect(() => {
                       </div>
 
                       {item.note && (
-                        <div style={styles.caption}>{item.note}</div>
+                        <div style={styles.caption}>
+                          {item.note}
+                        </div>
                       )}
                     </>
                   )}
 
-                  {/* FOLDER BATCH */}
-                  {item.type === "folder_batch" && (
-                    <>
+                    {/* FOLDER BATCH */}
+                    {item.type === "folder_batch" && (
+                      <>
+                    {showActionLine && (
                       <div style={styles.folderAction}>
                         <b>{item.owner?.display_name}</b> {item.action}
                       </div>
-
-                      {activeItem && (
-                        <div style={styles.carouselWrap}>
-                          <img
-                            src={activeItem.url}
-                            alt="preview"
-                            style={styles.carouselImage}
-                          />
-
-                          {items.length > 1 && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => prevSlide(item.id, items.length)}
-                                style={styles.carouselArrowLeft}
-                              >
-                                ‹
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => nextSlide(item.id, items.length)}
-                                style={styles.carouselArrowRight}
-                              >
-                                ›
-                              </button>
-
-                              <div style={styles.carouselDots}>
-                                {items.map((_: any, idx: number) => (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => goToSlide(item.id, idx)}
-                                    style={{
-                                      ...styles.dot,
-                                      ...(idx === slideIndex
-                                        ? styles.dotActive
-                                        : {}),
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            </>
-                          )}
+                    )}
+                      {activeItem?.note && (
+                        <div style={styles.caption}>
+                          {activeItem.note}
                         </div>
                       )}
 
-                      {activeItem?.note && (
-                        <div style={styles.caption}>{activeItem.note}</div>
-                      )}
+                        {activeItem && (
+                          <div style={styles.carouselWrap}>
+                            <img
+                              src={activeItem.url}
+                              alt="preview"
+                              style={styles.carouselImage}
+                            />
 
-                      <div style={styles.metaRow}>
-                        {item.folder_id && (
-                          <Link
-                            href={`/album/${item.folder_id}`}
-                            style={styles.link}
-                          >
-                            View Album
-                          </Link>
+                            {items.length > 1 && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => prevSlide(item.id, items.length)}
+                                  style={styles.carouselArrowLeft}
+                                >
+                                  ‹
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => nextSlide(item.id, items.length)}
+                                  style={styles.carouselArrowRight}
+                                >
+                                  ›
+                                </button>
+
+                                <div style={styles.carouselDots}>
+                                  {items.map((_: any, idx: number) => (
+                                    <button
+                                      key={idx}
+                                      type="button"
+                                      onClick={() => goToSlide(item.id, idx)}
+                                      style={{
+                                        ...styles.dot,
+                                        ...(idx === slideIndex ? styles.dotActive : {}),
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    </>
-                  )}
+
+                        <div style={styles.metaRow}>
+                          {item.folder_id && (
+                            <Link href={`/album/${item.folder_id}`} style={styles.link}>
+                              View Album
+                            </Link>
+                          )}
+                        </div>
+                      </>
+                    )}
 
                   {/* NORMAL BATCH (NON-FOLDER) */}
                   {item.type === "batch" && (
                     <>
-                      <div style={styles.folderAction}>
-                        <b>{item.owner?.display_name}</b> {item.action}
+                  {showActionLine && (
+                    <div style={styles.folderAction}>
+                      <b>{item.owner?.display_name}</b> {item.action}
+                    </div>
+                  )}
+                    {activeItem?.note && (
+                      <div style={styles.caption}>
+                        {activeItem.note}
                       </div>
+                    )}
 
                       {activeItem && (
                         <div style={styles.carouselWrap}>
@@ -321,9 +338,7 @@ useEffect(() => {
                                     onClick={() => goToSlide(item.id, idx)}
                                     style={{
                                       ...styles.dot,
-                                      ...(idx === slideIndex
-                                        ? styles.dotActive
-                                        : {}),
+                                      ...(idx === slideIndex ? styles.dotActive : {}),
                                     }}
                                   />
                                 ))}
@@ -331,10 +346,6 @@ useEffect(() => {
                             </>
                           )}
                         </div>
-                      )}
-
-                      {activeItem?.note && (
-                        <div style={styles.caption}>{activeItem.note}</div>
                       )}
                     </>
                   )}
@@ -367,22 +378,23 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 16,
-    paddingTop: 6,
-    paddingBottom: 18,
+    gap: 12,
+    paddingTop: 2,
+    paddingBottom: 14,
   },
 
   title: {
-    fontSize: 28,
-    fontWeight: 750,
-    letterSpacing: "-0.6px",
+    fontSize: 20,
+    fontWeight: 800,
     margin: 0,
+    marginBottom: 4,
+    letterSpacing: "-0.2px",
     color: "var(--text)",
   },
 
   subtitle: {
-    marginTop: 6,
-    fontSize: 14,
+    marginTop: 4,
+    fontSize: 13,
     color: "var(--muted)",
   },
 
@@ -410,20 +422,19 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   card: {
-    borderRadius: 18,
-    background: "var(--card)",
+    borderRadius: 20,
+    background: "white",
     border: "1px solid var(--border)",
-    padding: 14,
-    marginBottom: 14,
-    boxShadow: "var(--shadow-md)",
+    marginBottom: 18,
+    boxShadow: "0px 10px 26px rgba(15,23,42,0.06)",
+    overflow: "hidden",
   },
 
   cardHeader: {
     display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
+    alignItems: "center",
     gap: 12,
+    padding: "14px 16px",
   },
 
   userRow: {
@@ -433,17 +444,16 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   avatarCircle: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: 999,
-    background: "rgba(37,99,235,0.12)",
+    overflow: "hidden",
+    flexShrink: 0,
     border: "1px solid rgba(37,99,235,0.25)",
+    background: "rgba(37,99,235,0.12)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: 800,
-    color: "#2563eb",
-    fontSize: 14,
   },
 
   username: {
@@ -453,7 +463,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   timestamp: {
-    marginTop: 3,
+    marginTop: 2,
     fontSize: 12,
     color: "var(--muted2)",
   },
@@ -478,7 +488,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   folderAction: {
-    marginTop: 4,
+    padding: "6px 16px 2px 16px",
     fontSize: 14,
     color: "var(--text)",
   },
@@ -610,12 +620,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   caption: {
-    padding: "10px 12px",
-    fontSize: 13,
-    fontWeight: 700,
+    padding: "4px 16px 14px 16px",
+    fontSize: 15,
+    fontWeight: 500,
     color: "var(--text)",
-    borderBottom: "1px solid rgba(15,23,42,0.06)",
-    background: "white",
     lineHeight: 1.5,
   },
 
@@ -643,5 +651,12 @@ link: {
   borderRadius: 12,
   border: "1px solid rgba(37,99,235,0.18)",
   background: "rgba(37,99,235,0.06)",
+},
+
+avatarImage: {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  borderRadius: "999px",
 },
 };

@@ -226,22 +226,17 @@ export default function LegalDetailPage() {
   }
 
   return (
-    <main style={styles.page}>
-      <div style={styles.container}>
-        <h1 style={styles.title}>{title}</h1>
+  <main style={styles.page}>
+    <div style={styles.container}>
+
+      <Link href="/settings/legal" style={styles.backButton}>
+        ← Back
+      </Link>
+
+      <h1 style={styles.title}>{title}</h1>
 
         <div style={styles.card}>
           <pre style={styles.pre}>{content}</pre>
-        </div>
-
-        <div style={{ marginTop: 18, display: "flex", gap: 14 }}>
-          <Link href="/settings/legal" style={styles.link}>
-            ← Back to Legal Index
-          </Link>
-
-          <Link href="/settings" style={styles.link}>
-            Settings
-          </Link>
         </div>
       </div>
     </main>
@@ -288,4 +283,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: "bold",
     color: "#2563eb",
   },
+
+  backButton: {
+  display: "inline-block",
+  textDecoration: "none",
+  fontWeight: 850,
+  fontSize: 13,
+  color: "var(--text)",
+  background: "white",
+  border: "1px solid rgba(15,23,42,0.10)",
+  padding: "10px 14px",
+  borderRadius: 12,
+  boxShadow: "var(--shadow-sm)",
+  marginBottom: 16,
+},
 };

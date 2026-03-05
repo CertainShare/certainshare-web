@@ -7,18 +7,22 @@ import Link from "next/link";
 import UploadFab from "../components/UploadFab";
 import { deriveBillingFlags, getClientBillingStatus } from "../../lib/billingGate";
 
+type User = {
+  id: string;
+  display_name?: string;
+  profile_photo_url?: string | null;
+  is_private?: boolean;
+};
+
 export default function FriendsPage() {
-  const [friends, setFriends] = useState<any[]>([]);
-  const [incoming, setIncoming] = useState<any[]>([]);
-  const [outgoing, setOutgoing] = useState<any[]>([]);
+  const [friends, setFriends] = useState<User[]>([]);
+  const [incoming, setIncoming] = useState<User[]>([]);
+  const [outgoing, setOutgoing] = useState<User[]>([]);
+  const [userResults, setUserResults] = useState<User[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const [userResults, setUserResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-
-  // NEW: search
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
   const [isFrozen, setIsFrozen] = useState<boolean | null>(null);
@@ -49,9 +53,8 @@ export default function FriendsPage() {
 
   async function searchUsers(q: string) {
     if (isFrozen) return;
-    
-    const cleaned = q.trim();
 
+    const cleaned = q.trim();
     if (cleaned.length < 2) {
       setUserResults([]);
       return;
@@ -60,9 +63,7 @@ export default function FriendsPage() {
     setSearchLoading(true);
 
     try {
-      const res = await apiFetch(
-        `/users/search?q=${encodeURIComponent(cleaned)}`
-      );
+      const res = await apiFetch(`/users/search?q=${encodeURIComponent(cleaned)}`);
       setUserResults(res.results || []);
     } catch (err) {
       console.error("Search users failed:", err);
@@ -72,68 +73,50 @@ export default function FriendsPage() {
   }
 
   async function accept(userId: string) {
-    try {
-      await apiFetch("/friends/accept", {
-        method: "POST",
-        body: JSON.stringify({ userId }),
-      });
+    await apiFetch("/friends/accept", {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    });
 
-      await loadAll();
-      await searchUsers(search);
-    } catch (err: any) {
-      alert(err.message);
-    }
+    await loadAll();
+    await searchUsers(search);
   }
 
   async function reject(userId: string) {
-    try {
-      await apiFetch("/friends/reject", {
-        method: "POST",
-        body: JSON.stringify({ userId }),
-      });
+    await apiFetch("/friends/reject", {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    });
 
-      await loadAll();
-      await searchUsers(search);
-    } catch (err: any) {
-      alert(err.message);
-    }
+    await loadAll();
+    await searchUsers(search);
   }
 
   async function remove(userId: string) {
-    const ok = confirm("Remove this friend?");
-    if (!ok) return;
+    if (!confirm("Remove this friend?")) return;
 
-    try {
-      await apiFetch("/friends/remove", {
-        method: "POST",
-        body: JSON.stringify({ userId }),
-      });
+    await apiFetch("/friends/remove", {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    });
 
-      await loadAll();
-      await searchUsers(search);
-    } catch (err: any) {
-      alert(err.message);
-    }
+    await loadAll();
+    await searchUsers(search);
   }
 
   async function sendRequest(userId: string) {
-    try {
-      await apiFetch("/friends/request", {
-        method: "POST",
-        body: JSON.stringify({ userId }),
-      });
+    await apiFetch("/friends/request", {
+      method: "POST",
+      body: JSON.stringify({ userId }),
+    });
 
-      await loadAll();
-      await searchUsers(search);
-    } catch (err: any) {
-      alert(err.message || "Failed to send request");
-    }
+    await loadAll();
+    await searchUsers(search);
   }
 
   useEffect(() => {
     async function init() {
       const token = localStorage.getItem("token");
-
       if (!token) {
         window.location.href = "/login";
         return;
@@ -148,157 +131,71 @@ export default function FriendsPage() {
     init();
   }, []);
 
-  // filtering logic
-  const searchLower = search.trim().toLowerCase();
-
-  function matchesSearch(user: any) {
-    if (!searchLower) return true;
-
-    const name = (user.display_name || "").toLowerCase();
-    const id = (user.id || "").toLowerCase();
-
-    return name.includes(searchLower) || id.includes(searchLower);
+  function Avatar({ user }: { user: User }) {
+    return (
+      <div style={styles.avatarCircle}>
+        {user.profile_photo_url ? (
+          <img src={user.profile_photo_url} style={styles.avatarImage} />
+        ) : (
+          (user.display_name || user.id || "U").slice(0, 1).toUpperCase()
+        )}
+      </div>
+    );
   }
 
-  const filteredFriends = useMemo(
-    () => friends.filter(matchesSearch),
-    [friends, searchLower]
-  );
-
-  const filteredIncoming = useMemo(
-    () => incoming.filter(matchesSearch),
-    [incoming, searchLower]
-  );
-
-  const filteredOutgoing = useMemo(
-    () => outgoing.filter(matchesSearch),
-    [outgoing, searchLower]
-  );
-
-  if (isFrozen === null) {
-  return null;
-}
+  if (isFrozen === null) return null;
 
   return (
     <main style={styles.page}>
       <TopNav />
 
       <div style={styles.container}>
-        <div style={styles.headerRow}>
-          <div>
-            <h1 style={styles.title}>Friends</h1>
-            <div style={styles.subtitle}>
-              Manage your friend list and requests.
-            </div>
+        <h1 style={styles.title}>Friends</h1>
+
+        {isFrozen && (
+          <div style={styles.frozenBanner}>
+            Account frozen — friend actions disabled.
           </div>
-        </div>
+        )}
 
-          {isFrozen && (
-            <div style={styles.frozenBanner}>
-              Account frozen — friend actions are disabled. Manage billing to restore access.
-            </div>
-          )}
-
-        {/* SEARCH BAR */}
+        {/* SEARCH */}
         <div style={styles.searchWrap}>
           <input
             value={search}
             disabled={isFrozen}
             onChange={(e) => {
-              if (isFrozen) return;
               const val = e.target.value;
               setSearch(val);
               searchUsers(val);
             }}
-            placeholder={
-              isFrozen
-                ? "Search disabled while account is frozen"
-                : "Search friends..."
-            }
-            style={{
-              ...styles.searchInput,
-              ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
-            }}
+            placeholder="Search friends..."
+            style={styles.searchInput}
           />
         </div>
 
-        {loading && <p style={styles.statusText}>Loading...</p>}
-        {error && <p style={styles.errorText}>{error}</p>}
+        {loading && <p>Loading...</p>}
+        {error && <p style={{ color: "red" }}>{error}</p>}
 
-        {!loading && !error && (
+        {!loading && (
           <>
             {/* FIND FRIENDS */}
-            {search.trim().length >= 2 && (
+            {search.length >= 2 && (
               <div style={styles.section}>
-                <div style={styles.sectionHeader}>
-                  <div style={styles.sectionTitle}>Find Friends</div>
-                  <span style={styles.countBadge}>{userResults.length}</span>
-                </div>
+                <h3>Find Friends</h3>
 
                 {searchLoading ? (
-                  <p style={styles.muted}>Searching...</p>
-                ) : userResults.length === 0 ? (
-                  <p style={styles.muted}>No users found.</p>
+                  <p>Searching...</p>
                 ) : (
                   userResults.map((u) => (
                     <div key={u.id} style={styles.row}>
-                      <Link
-                        href={`/profile/${u.id}`}
-                        style={{ textDecoration: "none", color: "inherit" }}
-                      >
-                        <div style={styles.userBlock}>
-                          <div style={styles.avatarCircleMuted}>
-                            {(u.display_name || u.id || "U")
-                              .slice(0, 1)
-                              .toUpperCase()}
-                          </div>
-
-                          <div>
-                            <div style={styles.username}>
-                              {u.display_name || u.id}
-                            </div>
-                            <div style={styles.userMeta}>
-                              {u.is_private
-                                ? "Private profile"
-                                : "Public profile"}
-                            </div>
-                          </div>
-                        </div>
+                      <Link href={`/profile/${u.id}`} style={styles.userBlock}>
+                        <Avatar user={u} />
+                        <span>{u.display_name || u.id}</span>
                       </Link>
 
-                      {u.status === "friends" ? (
-                        <span style={styles.pendingBadge}>Friends</span>
-                      ) : u.status === "outgoing_pending" ? (
-                        <span style={styles.pendingBadge}>Pending</span>
-                      ) : u.status === "incoming_pending" ? (
-                        <button
-                          disabled={isFrozen}
-                          onClick={() => {
-                            if (isFrozen) return;
-                            accept(u.id);
-                          }}
-                          style={{
-                            ...styles.primaryButton,
-                            ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
-                          }}
-                        >
-                          Accept
-                        </button>
-                      ) : (
-                            <button
-                              disabled={isFrozen}
-                              onClick={() => {
-                                if (isFrozen) return;
-                                sendRequest(u.id);
-                              }}
-                              style={{
-                                ...styles.primaryButton,
-                                ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
-                              }}
-                            >
-                              Add Friend
-                            </button>
-                      )}
+                      <button onClick={() => sendRequest(u.id)} style={styles.button}>
+                        Add
+                      </button>
                     </div>
                   ))
                 )}
@@ -307,398 +204,171 @@ export default function FriendsPage() {
 
             {/* INCOMING */}
             <div style={styles.section}>
-              <div style={styles.sectionHeader}>
-                <div style={styles.sectionTitle}>Incoming Requests</div>
-                <span style={styles.countBadge}>{filteredIncoming.length}</span>
-              </div>
+              <h3>Incoming Requests</h3>
 
-              {filteredIncoming.length === 0 ? (
-                <p style={styles.muted}>
-                  {incoming.length === 0
-                    ? "No incoming requests."
-                    : "No matches found."}
-                </p>
-              ) : (
-                filteredIncoming.map((r) => (
-                  <div key={r.id} style={styles.row}>
-                    <Link
-                      href={`/profile/${r.id}`}
-                      style={{ textDecoration: "none", color: "inherit" }}
-                    >
-                      <div style={styles.userBlock}>
-                        <div style={styles.avatarCircle}>
-                          {(r.display_name || r.id || "U")
-                            .slice(0, 1)
-                            .toUpperCase()}
-                        </div>
+              {incoming.map((r) => (
+                <div key={r.id} style={styles.row}>
+                  <Link href={`/profile/${r.id}`} style={styles.userBlock}>
+                    <Avatar user={r} />
+                    <span>{r.display_name || r.id}</span>
+                  </Link>
 
-                        <div>
-                          <div style={styles.username}>
-                            {r.display_name || r.id}
-                          </div>
-                          <div style={styles.userMeta}>Incoming request</div>
-                        </div>
-                      </div>
-                    </Link>
+                  <div style={styles.actions}>
+                    <button onClick={() => accept(r.id)} style={styles.button}>
+                      Accept
+                    </button>
 
-                    <div style={styles.actions}>
-                      <button
-                        disabled={isFrozen}
-                        onClick={() => {
-                          if (isFrozen) return;
-                          accept(r.id);
-                        }}
-                        style={{
-                          ...styles.primaryButton,
-                          ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
-                        }}
-                      >
-                        Accept
-                      </button>
-
-                        <button
-                          disabled={isFrozen}
-                          onClick={() => {
-                            if (isFrozen) return;
-                            reject(r.id);
-                          }}
-                          style={{
-                            ...styles.grayButton,
-                            ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
-                          }}
-                        >
-                          Reject
-                        </button>
-                    </div>
+                    <button onClick={() => reject(r.id)} style={styles.grayButton}>
+                      Reject
+                    </button>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
 
             {/* OUTGOING */}
             <div style={styles.section}>
-              <div style={styles.sectionHeader}>
-                <div style={styles.sectionTitle}>Outgoing Requests</div>
-                <span style={styles.countBadge}>{filteredOutgoing.length}</span>
-              </div>
+              <h3>Outgoing Requests</h3>
 
-              {filteredOutgoing.length === 0 ? (
-                <p style={styles.muted}>
-                  {outgoing.length === 0
-                    ? "No outgoing requests."
-                    : "No matches found."}
-                </p>
-              ) : (
-                filteredOutgoing.map((r) => (
-                  <div key={r.id} style={styles.row}>
-                    <Link
-                      href={`/profile/${r.id}`}
-                      style={{ textDecoration: "none", color: "inherit" }}
-                    >
-                      <div style={styles.userBlock}>
-                        <div style={styles.avatarCircleMuted}>
-                          {(r.display_name || r.id || "U")
-                            .slice(0, 1)
-                            .toUpperCase()}
-                        </div>
+              {outgoing.map((r) => (
+                <div key={r.id} style={styles.row}>
+                  <Link href={`/profile/${r.id}`} style={styles.userBlock}>
+                    <Avatar user={r} />
+                    <span>{r.display_name || r.id}</span>
+                  </Link>
 
-                        <div>
-                          <div style={styles.username}>
-                            {r.display_name || r.id}
-                          </div>
-                          <div style={styles.userMeta}>Pending approval</div>
-                        </div>
-                      </div>
-                    </Link>
-
-                    <span style={styles.pendingBadge}>Pending</span>
-                  </div>
-                ))
-              )}
+                  <span style={styles.pending}>Pending</span>
+                </div>
+              ))}
             </div>
 
-            {/* FRIEND LIST */}
+            {/* FRIENDS */}
             <div style={styles.section}>
-              <div style={styles.sectionHeader}>
-                <div style={styles.sectionTitle}>Your Friends</div>
-                <span style={styles.countBadge}>{filteredFriends.length}</span>
-              </div>
+              <h3>Your Friends</h3>
 
-              {filteredFriends.length === 0 ? (
-                <p style={styles.muted}>
-                  {friends.length === 0
-                    ? "No friends yet."
-                    : "No matches found."}
-                </p>
-              ) : (
-                filteredFriends.map((f, index) => (
-                  <div key={`${f.id}-${index}`} style={styles.row}>
-                    <Link
-                      href={`/profile/${f.id}`}
-                      style={{ textDecoration: "none", color: "inherit" }}
-                    >
-                      <div style={styles.userBlock}>
-                        <div style={styles.avatarCircle}>
-                          {(f.display_name || f.id || "U")
-                            .slice(0, 1)
-                            .toUpperCase()}
-                        </div>
+              {friends.map((f) => (
+              <div
+                key={f.id}
+                style={styles.row}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f4f6f8")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#fafafa")}
+              >
+                  <Link href={`/profile/${f.id}`} style={styles.userBlock}>
+                    <Avatar user={f} />
+                    <span>{f.display_name || f.id}</span>
+                  </Link>
 
-                        <div>
-                          <div style={styles.username}>
-                            {f.display_name || f.id}
-                          </div>
-                          <div style={styles.userMeta}>Friend</div>
-                        </div>
-                      </div>
-                    </Link>
-
-                      <button
-                        disabled={isFrozen}
-                        onClick={() => {
-                          if (isFrozen) return;
-                          remove(f.id);
-                        }}
-                        style={{
-                          ...styles.grayButton,
-                          ...(isFrozen ? { opacity: 0.5, cursor: "not-allowed" } : {}),
-                        }}
-                      >
-                        Remove
-                      </button>
-                  </div>
-                ))
-              )}
+                  <button onClick={() => remove(f.id)} style={styles.grayButton}>
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
           </>
         )}
       </div>
 
-      {/* FLOATING UPLOAD BUTTON */}
       <UploadFab />
     </main>
   );
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  page: {
-    background: "var(--bg)",
-    minHeight: "100vh",
-  },
+  page: { minHeight: "100vh", background: "var(--bg)" },
 
-  container: {
-    maxWidth: 900,
-    margin: "0 auto",
-    padding: 24,
-  },
-
-  headerRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 16,
-    paddingTop: 6,
-    paddingBottom: 18,
-  },
+  container: { maxWidth: 900, margin: "0 auto", padding: "16px 24px 24px 24px" },
 
   title: {
-    fontSize: 28,
-    fontWeight: 750,
-    letterSpacing: "-0.6px",
-    margin: 0,
-    color: "var(--text)",
-  },
+  fontSize: 20,
+  fontWeight: 800,
+  marginBottom: 12,
+  letterSpacing: "-0.2px",
+  color: "var(--text)",
+},
 
-  subtitle: {
-    marginTop: 6,
-    fontSize: 14,
-    color: "var(--muted)",
-  },
-
-  searchWrap: {
-    marginBottom: 14,
-  },
+  searchWrap: { marginBottom: 20 },
 
   searchInput: {
     width: "100%",
-    padding: "12px 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(15,23,42,0.12)",
-    background: "white",
-    fontSize: 14,
-    outline: "none",
-    boxShadow: "var(--shadow-sm)",
-  },
-
-  statusText: {
-    marginTop: 16,
-    color: "var(--muted)",
-  },
-
-  errorText: {
-    marginTop: 16,
-    color: "#dc2626",
-    fontWeight: 600,
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid #ddd",
   },
 
   section: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 18,
     background: "white",
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 20,
     border: "1px solid var(--border)",
-    boxShadow: "var(--shadow-md)",
-  },
-
-  sectionHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  sectionTitle: {
-    fontWeight: 800,
-    fontSize: 14,
-    color: "var(--text)",
-  },
-
-  countBadge: {
-    fontSize: 12,
-    fontWeight: 800,
-    padding: "6px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,0.08)",
-    background: "rgba(15,23,42,0.04)",
-    color: "var(--text)",
   },
 
   row: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottom: "1px solid rgba(15,23,42,0.06)",
-    gap: 12,
-    flexWrap: "wrap",
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: "1px solid rgba(15,23,42,0.06)",
+    background: "#f8fafc",
+    marginBottom: 10,
   },
 
   userBlock: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
+    textDecoration: "none",
+    color: "inherit",
   },
 
   avatarCircle: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     borderRadius: 999,
-    background: "rgba(37,99,235,0.12)",
-    border: "1px solid rgba(37,99,235,0.25)",
+    overflow: "hidden",
+    background: "#eee",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontWeight: 800,
-    color: "#2563eb",
-    fontSize: 14,
-    flexShrink: 0,
+    fontWeight: 700,
   },
 
-  avatarCircleMuted: {
-    width: 38,
-    height: 38,
-    borderRadius: 999,
-    background: "rgba(15,23,42,0.05)",
-    border: "1px solid rgba(15,23,42,0.08)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: 800,
-    color: "#475569",
-    fontSize: 14,
-    flexShrink: 0,
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
   },
 
-  username: {
-    fontWeight: 800,
-    fontSize: 14,
-    color: "var(--text)",
-  },
+  actions: { display: "flex", gap: 8 },
 
-  userMeta: {
-    marginTop: 3,
-    fontSize: 12,
-    color: "var(--muted2)",
-  },
-
-  actions: {
-    display: "flex",
-    gap: 10,
-  },
-
-  muted: {
-    color: "var(--muted)",
-    fontSize: 14,
-  },
-
-  primaryButton: {
-    background: "var(--primary)",
+  button: {
+    padding: "6px 12px",
+    background: "#2563eb",
     color: "white",
-    padding: "8px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(37,99,235,0.4)",
+    borderRadius: 8,
+    border: "none",
     cursor: "pointer",
-    fontWeight: 800,
-    fontSize: 13,
-    boxShadow: "0px 10px 20px rgba(37,99,235,0.15)",
   },
 
   grayButton: {
-    background: "rgba(15,23,42,0.04)",
-    color: "#0f172a",
-    padding: "8px 12px",
-    borderRadius: 12,
-    border: "1px solid rgba(15,23,42,0.10)",
+    padding: "6px 12px",
+    background: "#eee",
+    borderRadius: 8,
+    border: "none",
     cursor: "pointer",
-    fontWeight: 800,
-    fontSize: 13,
   },
 
-  pendingBadge: {
-    fontSize: 12,
-    fontWeight: 800,
-    padding: "6px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(15,23,42,0.10)",
-    background: "rgba(15,23,42,0.04)",
-    color: "#475569",
-  },
-
-  floatingUpload: {
-    position: "fixed",
-    bottom: 26,
-    right: 26,
-    background: "#2563eb",
-    color: "white",
-    padding: "14px 18px",
-    borderRadius: 999,
-    fontWeight: 900,
-    fontSize: 14,
-    textDecoration: "none",
-    boxShadow: "0px 14px 32px rgba(37,99,235,0.35)",
-    border: "1px solid rgba(37,99,235,0.40)",
-    zIndex: 9999,
-  },
+  pending: { fontSize: 12, color: "#666" },
 
   frozenBanner: {
-  marginBottom: 16,
-  padding: "12px 14px",
-  borderRadius: 14,
-  background: "rgba(220,38,38,0.08)",
-  border: "1px solid rgba(220,38,38,0.25)",
-  color: "#991b1b",
-  fontWeight: 800,
-  fontSize: 13,
+    background: "#fee2e2",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+
+  rowHover: {
+  background: "#f4f6f8",
 },
 };

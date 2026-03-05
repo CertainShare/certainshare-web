@@ -188,11 +188,17 @@ useEffect(() => {
               >
                 <div style={styles.cardHeader}>
                   <div style={styles.userRow}>
-                    <div style={styles.avatarCircle}>
-                      {(n.actor_display_name || "S")
-                        .slice(0, 1)
-                        .toUpperCase()}
-                    </div>
+                  <div style={styles.avatarCircle}>
+                    {n.actor_profile_photo_url ? (
+                      <img
+                        src={n.actor_profile_photo_url}
+                        alt="avatar"
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      (n.actor_display_name || "S").slice(0, 1).toUpperCase()
+                    )}
+                  </div>
 
                     <div>
                       <div style={styles.username}>
@@ -295,22 +301,23 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     flexWrap: "wrap",
-    gap: 14,
-    paddingTop: 6,
-    paddingBottom: 18,
+    gap: 12,
+    paddingTop: 2,
+    paddingBottom: 14,
   },
 
   title: {
-    fontSize: 28,
-    fontWeight: 750,
-    letterSpacing: "-0.6px",
+    fontSize: 20,
+    fontWeight: 800,
     margin: 0,
+    marginBottom: 4,
+    letterSpacing: "-0.2px",
     color: "var(--text)",
   },
 
   subtitle: {
-    marginTop: 6,
-    fontSize: 14,
+    marginTop: 4,
+    fontSize: 13,
     color: "var(--muted)",
   },
 
@@ -357,14 +364,16 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 18,
     background: "white",
     border: "1px solid var(--border)",
-    padding: 14,
+    padding: 16,
     marginBottom: 12,
     boxShadow: "var(--shadow-md)",
+    transition: "all 0.15s ease",
   },
 
   unreadCard: {
-    border: "1px solid rgba(37,99,235,0.35)",
-    background: "rgba(37,99,235,0.04)",
+    border: "1px solid rgba(37,99,235,0.25)",
+    background: "rgba(37,99,235,0.05)",
+    boxShadow: "0px 8px 20px rgba(37,99,235,0.10)",
   },
 
   cardHeader: {
@@ -378,6 +387,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 12,
+    minWidth: 0,
   },
 
   avatarCircle: {
@@ -541,4 +551,11 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     cursor: "pointer",
   },
+
+  avatarImage: {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  borderRadius: "999px",
+},
 };

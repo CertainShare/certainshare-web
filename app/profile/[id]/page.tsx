@@ -257,11 +257,12 @@ async function unblockUser() {
     <main style={styles.page}>
       <TopNav />
 
-    <div style={styles.backRow}>
-      <button onClick={() => router.back()} style={styles.backButton}>
-        ← Back
+      <button
+        onClick={() => router.back()}
+        style={styles.pageBackButton}
+      >
+        ←
       </button>
-    </div>
 
       <div style={styles.container}>
         {loading && <p style={styles.mutedText}>Loading...</p>}
@@ -269,8 +270,8 @@ async function unblockUser() {
 
         {!loading && !error && profile && (
           <>
-            <div style={styles.profileCard}>
-              <div style={styles.banner} />
+          <div style={styles.profileCard}>
+            <div style={styles.banner} />
 
               <div style={styles.profileRow}>
                 <div style={styles.profileLeft}>
@@ -359,11 +360,19 @@ async function unblockUser() {
             ) : (
                 <div style={styles.gridUploads}>
                 {albums.map((album) => (
-                  <div
-                    key={album.id}
-                    style={styles.uploadCard}
-                    onClick={() => router.push(`/album/${album.id}`)}
-                  >
+                <div
+                  key={album.id}
+                  style={styles.uploadCard}
+                  onClick={() => router.push(`/album/${album.id}`)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0px 14px 30px rgba(15,23,42,0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0px 6px 16px rgba(15,23,42,0.06)";
+                  }}
+                >
                     <div style={styles.albumThumb}>
                       {album.hero_uri ? (
                         <img
@@ -391,7 +400,17 @@ async function unblockUser() {
                 href={`/media/${upload.id}?user=${id}`}
                 style={{ textDecoration: "none" }}
               >
-                <div style={styles.uploadCard}>
+                <div
+                  style={styles.uploadCard}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = "0px 14px 30px rgba(15,23,42,0.12)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0px 6px 16px rgba(15,23,42,0.06)";
+                  }}
+                >
                   <img
                     src={
                       upload.url ||
@@ -457,21 +476,23 @@ backButton: {
 
   banner: {
     height: 140,
+    position: "relative",
     background:
       "linear-gradient(135deg, rgba(37,99,235,1) 0%, rgba(79,70,229,1) 50%, rgba(147,51,234,1) 100%)",
   },
 
   profileRow: {
-    padding: 18,
+    padding: "22px 20px",
     display: "flex",
     justifyContent: "space-between",
-    gap: 20,
+    gap: 24,
     flexWrap: "wrap",
+    alignItems: "center",
   },
 
   profileLeft: {
     display: "flex",
-    gap: 16,
+    gap: 18,
     alignItems: "center",
   },
 
@@ -487,7 +508,10 @@ backButton: {
   },
 
   profileText: {
-    marginTop: -10,
+    marginTop: -6,
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
   },
 
   profileName: {
@@ -509,12 +533,15 @@ backButton: {
     marginTop: 10,
     fontSize: 12,
     fontWeight: 850,
-    padding: "6px 10px",
+    padding: "6px 12px",
     borderRadius: 999,
     background: "rgba(15,23,42,0.04)",
     border: "1px solid rgba(15,23,42,0.10)",
     color: "var(--text)",
-    display: "inline-block",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    lineHeight: 1,
   },
 
   profileActions: {
@@ -538,27 +565,28 @@ backButton: {
   marginBottom: 14,
 },
 
-tab: {
-  flex: 1,
-  padding: "10px 12px",
-  borderRadius: 14,
-  border: "1px solid rgba(15,23,42,0.10)",
-  background: "rgba(15,23,42,0.03)",
-  fontWeight: 850,
-  cursor: "pointer",
-  color: "var(--text)",
-},
+  tab: {
+    flex: 1,
+    padding: "11px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(15,23,42,0.08)",
+    background: "rgba(15,23,42,0.02)",
+    fontWeight: 800,
+    cursor: "pointer",
+    color: "var(--text)",
+    transition: "all 0.15s ease",
+  },
 
-tabActive: {
-  flex: 1,
-  padding: "10px 12px",
-  borderRadius: 14,
-  border: "1px solid rgba(37,99,235,0.35)",
-  background: "rgba(37,99,235,0.12)",
-  fontWeight: 900,
-  cursor: "pointer",
-  color: "#2563eb",
-},
+  tabActive: {
+    flex: 1,
+    padding: "11px 12px",
+    borderRadius: 12,
+    border: "1px solid rgba(37,99,235,0.35)",
+    background: "rgba(37,99,235,0.10)",
+    fontWeight: 900,
+    cursor: "pointer",
+    color: "#2563eb",
+  },
 
 albumName: {
   padding: "10px 12px",
@@ -605,18 +633,20 @@ emptyAlbum: {
   gridUploads: {
     marginTop: 14,
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
-    gap: 14,
+    gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+    gap: 16,
   },
 
   uploadCard: {
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: "hidden",
-    border: "1px solid var(--border)",
+    border: "1px solid rgba(15,23,42,0.08)",
     background: "white",
-    boxShadow: "var(--shadow-md)",
+    boxShadow: "0px 6px 16px rgba(15,23,42,0.06)",
     cursor: "pointer",
+    transition: "transform 0.15s ease, box-shadow 0.15s ease",
   },
+
   uploadImage: {
     width: "100%",
     height: 160,
@@ -704,4 +734,23 @@ dropdownItemDanger: {
   color: "#dc2626",
 },
 
+  pageBackButton: {
+    position: "fixed",
+    top: 110,
+    left: 30,
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    background: "rgba(15,23,42,0.06)",
+    border: "1px solid rgba(15,23,42,0.12)",
+    color: "var(--text)",
+    fontSize: 20,
+    fontWeight: 900,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    backdropFilter: "blur(6px)",
+    zIndex: 1000,
+  },
 };
