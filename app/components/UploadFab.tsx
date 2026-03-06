@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import UploadFlowModal from "@/app/components/UploadFlowModal";
@@ -10,7 +11,15 @@ type UploadFabProps = {
   defaultFolderId?: string | null;
 };
 
-export default function UploadFab({ defaultFolderId = null }: UploadFabProps) {
+export default function UploadFab(props: UploadFabProps) {
+  return (
+    <Suspense fallback={null}>
+      <UploadFabInner {...props} />
+    </Suspense>
+  );
+}
+
+function UploadFabInner({ defaultFolderId = null }: UploadFabProps) {
   const [openMenu, setOpenMenu] = useState(false);
   const [flow, setFlow] = useState<"folder" | "media" | null>(null);
 
