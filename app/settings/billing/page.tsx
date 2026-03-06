@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
 
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
+function formatDate(dateValue: any) {
+  const d = new Date(dateValue);
 
   return d.toLocaleDateString(undefined, {
     year: "numeric",
@@ -25,6 +25,7 @@ function BillingPageInner() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
+  const [interval, setInterval] = useState<"monthly" | "yearly">("monthly");
 
   const searchParams = useSearchParams();
   const canBuyAddon =
@@ -125,16 +126,19 @@ function BillingPageInner() {
     let tries = 0;
     const maxTries = 8;
 
-      const t = setInterval(async () => {
-    tries += 1;
-    await refreshBilling();
+    const timer = window.setInterval(() => {
+      tries += 1;
 
-    if (tries >= maxTries) {
-      clearInterval(t);
-    }
-  }, 2000);
+      void refreshBilling();
 
-    return () => clearInterval(t);
+      if (tries >= maxTries) {
+        window.clearInterval(timer);
+      }
+    }, 2000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
   }, [searchParams]);
 
     const accountState = billing?.account_state || "active";
@@ -196,6 +200,11 @@ function BillingPageInner() {
                   <div style={styles.planName}>
                     {billing.plan?.toUpperCase() || "FREE"}
                   </div>
+                  {billing.cancel_at_period_end && billing.current_period_end && (
+                  <div style={{ marginTop: 6, fontSize: 13, fontWeight: 700 }}>
+                    Cancels on {formatDate(billing.current_period_end)}
+                  </div>
+                )}
                 </div>
 
                 <div
@@ -258,34 +267,55 @@ function BillingPageInner() {
                 More storage, backups, and long-term protection.
               </div>
             </div>
+            <div style={styles.intervalToggle}>
+            <button
+              onClick={() => setInterval("monthly")}
+              style={{
+                ...styles.intervalButton,
+                ...(interval === "monthly" ? styles.intervalButtonActive : {}),
+              }}
+            >
+              Monthly
+            </button>
+
+            <button
+              onClick={() => setInterval("yearly")}
+              style={{
+                ...styles.intervalButton,
+                ...(interval === "yearly" ? styles.intervalButtonActive : {}),
+              }}
+            >
+              Yearly (Save 17%)
+            </button>
+          </div>
 
             <div style={styles.planGrid}>
               <PlanCard
                 name="Basic"
-                price="$2.99/mo"
+                price={interval === "monthly" ? "$2.99/mo" : "$29.99/yr"}
                 storage="10 GB"
                 note="Perfect for personal use."
-                onSelect={() => startCheckout("basic", "monthly")}
+                onSelect={() => startCheckout("basic", interval)}
                 disabled={working}
                 highlight={false}
               />
 
               <PlanCard
                 name="Pro"
-                price="$6.99/mo"
+                price={interval === "monthly" ? "$6.99/mo" : "$69.99/yr"}
                 storage="100 GB"
                 note="Best value for serious storage."
-                onSelect={() => startCheckout("pro", "monthly")}
+                onSelect={() => startCheckout("pro", interval)}
                 disabled={working}
                 highlight={true}
               />
 
               <PlanCard
                 name="Family"
-                price="$17.99/mo"
+                price={interval === "monthly" ? "$17.99/mo" : "$179.99/yr"}
                 storage="400 GB"
                 note="Built for families and shared albums."
-                onSelect={() => startCheckout("family", "monthly")}
+                onSelect={() => startCheckout("family", interval)}
                 disabled={working}
                 highlight={false}
               />
@@ -675,6 +705,29 @@ const styles: Record<string, React.CSSProperties> = {
   color: "#991b1b",
   fontWeight: 900,
   fontSize: 13,
+},
+
+intervalToggle: {
+  display: "flex",
+  gap: 8,
+  marginTop: 10,
+  marginBottom: 18,
+},
+
+intervalButton: {
+  padding: "8px 14px",
+  borderRadius: 999,
+  border: "1px solid rgba(15,23,42,0.12)",
+  background: "white",
+  fontWeight: 900,
+  fontSize: 12,
+  cursor: "pointer",
+},
+
+intervalButtonActive: {
+  background: "#2563eb",
+  color: "white",
+  border: "1px solid #2563eb",
 },
 };
 export default function BillingPage() {
