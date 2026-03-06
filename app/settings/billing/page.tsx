@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
@@ -20,7 +20,7 @@ function capitalize(str: string) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-export default function BillingPage() {
+function BillingPageInner() {
   const [billing, setBilling] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
@@ -677,3 +677,10 @@ const styles: Record<string, React.CSSProperties> = {
   fontSize: 13,
 },
 };
+export default function BillingPage() {
+  return (
+    <Suspense fallback={null}>
+      <BillingPageInner />
+    </Suspense>
+  );
+}
