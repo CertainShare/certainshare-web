@@ -54,7 +54,7 @@ export default function HomePage() {
             <p style={styles.heroSubtitle}>
               CertainShare is a private media vault built for families and real
               people. Store your memories, control who sees them, and never worry
-              about your data being colected and sold.
+              about your data being collected and sold.
             </p>
 
             <div style={styles.heroButtons}>
