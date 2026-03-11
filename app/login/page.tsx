@@ -114,7 +114,7 @@ router.push("/login/2fa");
                     fontSize: 16
                   }}
                 >
-                  {showPassword ? "🙈" : "👁"}
+                  "👁"
                 </button>
               </div>
             </div>

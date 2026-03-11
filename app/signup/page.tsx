@@ -140,7 +140,7 @@ export default function SignupPage() {
                     fontSize: 16
                   }}
                 >
-                  {showPassword ? "🙈" : "👁"}
+                  "👁"
                 </button>
               </div>
             </div>
