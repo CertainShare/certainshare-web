@@ -282,13 +282,13 @@ useEffect(() => {
                           </div>
                         )}
 
-                        <div style={styles.metaRow}>
-                          {item.folder_id && (
-                            <Link href={`/album/${item.folder_id}`} style={styles.link}>
-                              View Album
-                            </Link>
-                          )}
-                        </div>
+                      <div style={styles.metaRow}>
+                        {item.folder_id && (
+                          <Link href={`/album/${item.folder_id}`} style={styles.link}>
+                            View Album
+                          </Link>
+                        )}
+                      </div>
                       </>
                     )}
 
@@ -638,10 +638,9 @@ const styles: Record<string, React.CSSProperties> = {
 },
 
 metaRow: {
-  marginTop: 12,
   display: "flex",
   justifyContent: "flex-end",
-  alignItems: "center",
+  padding: "12px 16px 16px 16px",
 },
 
 link: {
