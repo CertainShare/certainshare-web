@@ -10,6 +10,7 @@ export default function SignupPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [birthdate, setBirthdate] = useState("");
 
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -115,13 +116,33 @@ export default function SignupPage() {
 
             <div style={styles.field}>
               <label style={styles.label}>Password</label>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={styles.input}
-                type="password"
-                placeholder="Minimum 8 characters"
-              />
+
+              <div style={{ position: "relative" }}>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={styles.input}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Minimum 8 characters"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    fontSize: 16
+                  }}
+                >
+                  {showPassword ? "🙈" : "👁"}
+                </button>
+              </div>
             </div>
 
             <div style={styles.field}>
@@ -275,7 +296,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   input: {
     width: "100%",
-    padding: "12px 14px",
+    padding: "12px 40px 12px 14px",
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.12)",
     background: "rgba(15,23,42,0.02)",

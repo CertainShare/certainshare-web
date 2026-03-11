@@ -10,6 +10,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -89,13 +90,33 @@ router.push("/login/2fa");
 
             <div style={styles.field}>
               <label style={styles.label}>Password</label>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={styles.input}
-                type="password"
-                placeholder="Enter your password"
-              />
+
+              <div style={{ position: "relative" }}>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={styles.input}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: 12,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    fontSize: 16
+                  }}
+                >
+                  {showPassword ? "🙈" : "👁"}
+                </button>
+              </div>
             </div>
 
             {error && <div style={styles.errorBox}>Error: {error}</div>}
@@ -224,7 +245,7 @@ const styles: Record<string, React.CSSProperties> = {
 
   input: {
     width: "100%",
-    padding: "12px 14px",
+    padding: "12px 40px 12px 14px",
     borderRadius: 14,
     border: "1px solid rgba(15,23,42,0.12)",
     background: "rgba(15,23,42,0.02)",
