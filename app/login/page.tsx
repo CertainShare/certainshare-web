@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiFetch } from "../../lib/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -114,7 +115,7 @@ router.push("/login/2fa");
                     fontSize: 16
                   }}
                 >
-                  "👁"
+                  {showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}
                 </button>
               </div>
             </div>
