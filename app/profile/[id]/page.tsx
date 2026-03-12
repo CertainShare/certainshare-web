@@ -374,15 +374,24 @@ async function unblockUser() {
                   }}
                 >
                     <div style={styles.albumThumb}>
-                      {album.hero_uri ? (
+                    {album.hero_uri ? (
+                      album.hero_uri.match(/\.(mp4|mov|webm)$/i) ? (
+                        <video
+                          src={album.hero_uri}
+                          style={styles.uploadImage}
+                          muted
+                          playsInline
+                        />
+                      ) : (
                         <img
                           src={album.hero_uri}
                           alt="album"
                           style={styles.uploadImage}
                         />
-                      ) : (
-                        <div style={styles.emptyAlbum}>No Cover</div>
-                      )}
+                      )
+                    ) : (
+                      <div style={styles.emptyAlbum}>No Cover</div>
+                    )}
                     </div>
 
                     <div style={styles.albumName}>{album.name || "Untitled Album"}</div>
@@ -411,16 +420,29 @@ async function unblockUser() {
                     e.currentTarget.style.boxShadow = "0px 6px 16px rgba(15,23,42,0.06)";
                   }}
                 >
-                  <img
-                    src={
-                      upload.url ||
-                      upload.uri ||
-                      upload.cloudfront_url ||
-                      upload.signed_url
-                    }
-                    alt="upload"
-                    style={styles.uploadImage}
-                  />
+                {(() => {
+                  const url =
+                    upload.url ||
+                    upload.uri ||
+                    upload.cloudfront_url ||
+                    upload.signed_url ||
+                    "";
+
+                  return url.match(/\.(mp4|mov|webm)$/i) ? (
+                    <video
+                      src={url}
+                      style={styles.uploadImage}
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={url}
+                      alt="upload"
+                      style={styles.uploadImage}
+                    />
+                  );
+                })()}
                 </div>
               </Link>
             ))}

@@ -681,21 +681,39 @@ const daysRemaining =
                           }}
                         >
                           <div style={styles.albumImageBox}>
-                            {album.hero_uri ? (
+                          {album.hero_uri ? (
+                            album.hero_uri.match(/\.(mp4|mov|webm)$/i) ? (
+                              <video
+                                src={album.hero_uri}
+                                style={styles.albumImage}
+                                muted
+                                playsInline
+                              />
+                            ) : (
                               <img
                                 src={album.hero_uri}
                                 alt={album.name}
                                 style={styles.albumImage}
                               />
-                            ) : album.media && album.media.length > 0 && album.media[0]?.url ? (
+                            )
+                          ) : album.media && album.media.length > 0 && album.media[0]?.url ? (
+                            album.media[0].url.match(/\.(mp4|mov|webm)$/i) ? (
+                              <video
+                                src={album.media[0].url}
+                                style={styles.albumImage}
+                                muted
+                                playsInline
+                              />
+                            ) : (
                               <img
                                 src={album.media[0].url}
                                 alt={album.name}
                                 style={styles.albumImage}
                               />
-                            ) : (
-                              <div style={styles.albumPlaceholder}>📁</div>
-                            )}
+                            )
+                          ) : (
+                            <div style={styles.albumPlaceholder}>📁</div>
+                          )}
                           </div>
 
                           <div style={styles.albumInfo}>
