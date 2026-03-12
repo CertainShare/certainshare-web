@@ -226,7 +226,16 @@ async function handleConfirmDelete() {
                     if (selectMode) e.preventDefault();
                   }}
                 >
+                  {item.url.match(/\.(mp4|mov|webm)$/i) ? (
+                  <video
+                    src={item.url}
+                    style={styles.tileImg}
+                    muted
+                    playsInline
+                  />
+                ) : (
                   <img src={item.url} alt="media" style={styles.tileImg} />
+                )}
                 </Link>
 
                 {selectMode && (

@@ -172,7 +172,15 @@ export default function MediaPage({
           <div style={styles.viewerCard}>
             <div style={styles.viewerTop}>
               <div style={styles.imageStage}>
+              {item.url.match(/\.(mp4|mov|webm)$/i) ? (
+                <video
+                  src={item.url}
+                  controls
+                  style={styles.image}
+                />
+              ) : (
                 <img src={item.url} alt="media" style={styles.image} />
+              )}
 
                 {/* Back Arrow Overlay */}
                 <button

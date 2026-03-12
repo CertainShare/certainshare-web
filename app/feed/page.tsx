@@ -209,11 +209,19 @@ useEffect(() => {
                   {item.type === "single" && (
                     <>
                       <div style={styles.imageWrap}>
+                      {item.url.match(/\.(mp4|mov|webm)$/i) ? (
+                        <video
+                          src={item.url}
+                          controls
+                          style={styles.image}
+                        />
+                      ) : (
                         <img
                           src={item.url}
                           alt="feed item"
                           style={styles.image}
                         />
+                      )}
                       </div>
 
                       {item.note && (
@@ -240,11 +248,19 @@ useEffect(() => {
 
                         {activeItem && (
                           <div style={styles.carouselWrap}>
+                          {activeItem.url.match(/\.(mp4|mov|webm)$/i) ? (
+                            <video
+                              src={activeItem.url}
+                              controls
+                              style={styles.carouselImage}
+                            />
+                          ) : (
                             <img
                               src={activeItem.url}
                               alt="preview"
                               style={styles.carouselImage}
                             />
+                          )}
 
                             {items.length > 1 && (
                               <>
@@ -308,11 +324,19 @@ useEffect(() => {
 
                       {activeItem && (
                         <div style={styles.carouselWrap}>
+                        {activeItem.url.match(/\.(mp4|mov|webm)$/i) ? (
+                          <video
+                            src={activeItem.url}
+                            controls
+                            style={styles.carouselImage}
+                          />
+                        ) : (
                           <img
                             src={activeItem.url}
                             alt="preview"
                             style={styles.carouselImage}
                           />
+                        )}
 
                           {items.length > 1 && (
                             <>

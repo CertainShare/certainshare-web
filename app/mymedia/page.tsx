@@ -833,20 +833,29 @@ const daysRemaining =
                           }
                         }}
                       >
-                        <Link
-                          href={`/media/${upload.id}?library=1`}
-                          onClick={(e) => {
-                            if (selectMode || activeUploadMenuId === upload.id) {
-                              e.preventDefault();
-                            }
-                          }}
-                        >
+                      <Link
+                        href={`/media/${upload.id}?library=1`}
+                        onClick={(e) => {
+                          if (selectMode || activeUploadMenuId === upload.id) {
+                            e.preventDefault();
+                          }
+                        }}
+                      >
+                        {upload.url.match(/\.(mp4|mov|webm)$/i) ? (
+                          <video
+                            src={upload.url}
+                            style={styles.uploadImage}
+                            muted
+                            playsInline
+                          />
+                        ) : (
                           <img
                             src={upload.url}
                             alt="upload"
                             style={styles.uploadImage}
                           />
-                        </Link>
+                        )}
+                      </Link>
                         {/* 3-dot menu trigger (only when not in select mode) */}
                         {!selectMode && (
                           <>
