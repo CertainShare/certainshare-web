@@ -79,6 +79,11 @@ const [carouselError, setCarouselError] = useState("");
     | null
   >(null);
 
+  const isTouchDevice =
+  typeof window !== "undefined" &&
+  (window.matchMedia("(hover: none)").matches ||
+    "ontouchstart" in window);
+
   async function loadMe() {
     const res = await apiFetch("/users/me");
     setMe(res);
@@ -729,7 +734,10 @@ const daysRemaining =
                           <>
                             <div
                               data-album-menu-trigger="true"
-                              style={styles.menuTrigger}
+                              style={{
+                                ...styles.menuTrigger,
+                                opacity: isTouchDevice ? 1 : 0,
+                              }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveAlbumMenuId(
@@ -877,9 +885,12 @@ const daysRemaining =
                         {/* 3-dot menu trigger (only when not in select mode) */}
                         {!selectMode && (
                           <>
-                            <div
-                              data-menu-trigger="true"
-                              style={styles.menuTrigger}
+                        <div
+                          data-menu-trigger="true"
+                          style={{
+                            ...styles.menuTrigger,
+                            opacity: isTouchDevice ? 1 : 0,
+                          }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveUploadMenuId(
