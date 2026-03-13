@@ -491,7 +491,7 @@ const daysRemaining =
                   me?.profile_photo_url ||
                   "https://www.gravatar.com/avatar/?d=mp&s=200"
                 }
-                alt="Profile"
+                alt="Profile photo"
                 style={styles.profileImage}
               />
 
@@ -643,7 +643,7 @@ const daysRemaining =
               <div style={styles.emptyState}>
                 <div style={styles.emptyTitle}>No albums yet</div>
                 <div style={styles.emptySub}>
-                  Create your first album to organize your memories.
+                  Create your first album to organize your profile.
                 </div>
               </div>
             ) : (
@@ -823,8 +823,7 @@ const daysRemaining =
               <div style={styles.emptyState}>
                 <div style={styles.emptyTitle}>No uploads yet</div>
                 <div style={styles.emptySub}>
-                  Upload your first photo or video to start building your
-                  library.
+                  Upload your first photo or video to start building your profile.
                 </div>
               </div>
             ) : (

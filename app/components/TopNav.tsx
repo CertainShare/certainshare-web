@@ -106,7 +106,7 @@ export default function TopNav() {
               ...styles.navIcon,
               ...(isActive("/mymedia") ? styles.navIconActive : {}),
             }}
-            title="My Media"
+            title="Profile"
           >
             <User size={18} />
           </Link>
