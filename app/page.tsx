@@ -23,7 +23,7 @@ export default function HomePage() {
           <div style={styles.navActions}>
             {hasToken ? (
               <Link href="/mymedia" style={styles.navButtonPrimary}>
-                Go to My Media
+                Go to Profile
               </Link>
             ) : (
               <>
@@ -60,7 +60,7 @@ export default function HomePage() {
             <div style={styles.heroButtons}>
               {hasToken ? (
                 <Link href="/mymedia" style={styles.primaryButton}>
-                  Go to My Media
+                  Go to Profile
                 </Link>
               ) : (
                 <>
@@ -320,7 +320,7 @@ export default function HomePage() {
           <div style={styles.ctaButtons}>
             {hasToken ? (
               <Link href="/mymedia" style={styles.primaryButton}>
-                Go to My Media
+                Go to Profile
               </Link>
             ) : (
               <>
